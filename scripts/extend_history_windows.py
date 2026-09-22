@@ -15,7 +15,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 from utils.opening_ic import ICConfig,SessionData,feature_registry
-from utils.directional_review import reviewed_registry,enrich_atomic
+from utils.directional_review import reviewed_registry,enrich_atomic,conservative_registry
 from utils.ic_statistics import evaluate_all
 from scripts.run_opening_ic import sha,feature_audit,evaluation_fingerprint
 from scripts.audit_opening_data import RAW,EXPECTED_SHA256
@@ -32,7 +32,7 @@ def registry():
     new['window_extension']=True
     new['prior_status']='新增回看参数，沿用同表达的机制假设；在本窗口 IC 计算前登记；本批期货数据已见'
     old['window_extension']=False
-    return pd.concat([old,new],ignore_index=True)
+    return conservative_registry(pd.concat([old,new],ignore_index=True))
 
 
 def archive():

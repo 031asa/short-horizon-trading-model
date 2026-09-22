@@ -15,7 +15,7 @@
 <label class="control">观察期<select id="obs"></select></label>
 <label class="control">时间基准<select id="anchor"><option value="decision">观察结束</option><option value="arrival">执行延迟后</option></select></label>
 <label class="control">评价目标<select id="target"><option value="signed">有方向价变</option><option value="absolute">绝对价变</option></select></label>
-<label class="control">逻辑预期版本<select id="priorView"><option value="review">激进研究假设</option><option value="original">原始登记</option></select></label>
+<label class="control">逻辑预期版本<select id="priorView"><option value="review">保守逻辑预期</option><option value="original">原始登记</option></select></label>
 <label class="control">因子来源<select id="origin"><option value="all">原有与新增</option><option value="original">原有表达</option><option value="derived">新增方向表达</option></select></label>
 <label class="control">样本口径<select id="pairs"><option value="own">逐期限有效样本</option><option value="common_observations_horizons">跨观察期 × 30 期限共同任务</option></select></label>
 <label class="control">响应类型<select id="kind"><option value="cumulative">累计响应</option><option value="incremental">逐秒新增响应</option></select></label>
@@ -29,7 +29,7 @@
 <p class="footnote hidden" id="filterNote"></p>
 <div class="table-shell" id="table"></div>
 <div class="drawer hidden" id="detail"></div>
-<details><summary>口径、覆盖率与文件说明</summary><p>每天开盘第 10–59 秒每秒产生任务，观察期 1–5 秒；普通历史窗口 5／10 秒。允许使用任务产生前已经积累的信息。标签从观察结束或其后第二张快照开始，未来 1–30 秒全部用 LastPrice。</p><p>共同样本针对当前因子独立取交集：同一任务在 5 个观察期和全部 30 个期限都有效。覆盖率因此可能减少。质量字段、别名与重复表达均列出；别名复用目标因子，不作为新的独立证据。</p><p>累计响应 = P(t+u)−P(t)；逐秒新增响应 = P(t+u)−P(t+u−1)。绝对价变是当前所选响应的绝对值。缺口任一端无效均保留缺失。曲线展示每日 IC 的等权均值，不拟合单个半衰期。</p><p>每天至少 20 对，常数因子或常数标签不计算 IC。均值、中位数、标准差描述每日 IC 分布；正负日期比例以有效日期为分母，零 IC 日期留在分母。配对数、覆盖率还包含因常数而不能计算 IC 的日期。</p><p>原始登记与激进研究假设分别保留。本次在已看过期货结果后按机制审阅，新增表达在重测前冻结；不按新增 IC 反改符号。部分单侧量使用条件性方向假设，仍保留原角色；纯无方向强度保留不确定或新增交互。所有 IC 保留原符号。</p><p>同一时刻及相邻任务有重叠，不能视为独立试验。统计方向不等于显著性，IC 不是正确率或收益。后续 ETF 五档数据再做真正筛选。</p></details>
+<details><summary>口径、覆盖率与文件说明</summary><p>每天开盘第 10–59 秒每秒产生任务，观察期 1–5 秒；普通历史窗口 5／10 秒。允许使用任务产生前已经积累的信息。标签从观察结束或其后第二张快照开始，未来 1–30 秒全部用 LastPrice。</p><p>共同样本针对当前因子独立取交集：同一任务在 5 个观察期和全部 30 个期限都有效。覆盖率因此可能减少。质量字段、别名与重复表达均列出；别名复用目标因子，不作为新的独立证据。</p><p>累计响应 = P(t+u)−P(t)；逐秒新增响应 = P(t+u)−P(t+u−1)。绝对价变是当前所选响应的绝对值。缺口任一端无效均保留缺失。曲线展示每日 IC 的等权均值，不拟合单个半衰期。</p><p>每天至少 20 对，常数因子或常数标签不计算 IC。均值、中位数、标准差描述每日 IC 分布；正负日期比例以有效日期为分母，零 IC 日期留在分母。配对数、覆盖率还包含因常数而不能计算 IC 的日期。</p><p>原始登记与当前保守口径分别保留。此前额外选定的延续、回归、单侧主导及新增交互方向暂改为不确定；旧假设仅保留为研究线索。修改只涉及预期，不改因子、样本或 IC。所有 IC 保留原符号。</p><p>同一时刻及相邻任务有重叠，不能视为独立试验。统计方向不等于显著性，IC 不是正确率或收益。后续 ETF 五档数据再做真正筛选。</p></details>
 <div class="links"><a href="IC研究结果.md">说明报告</a><a href="可输入回看窗口说明.md">回看输入与固定参数</a><a href="有方向逻辑预期审阅.md">方向机制审阅</a><a href="逻辑预期逐项审阅.csv">新旧预期对照 CSV</a><a href="数据异常说明.md">异常与支持不足</a><a href="factor_coverage.csv">全部输出清单 CSV</a><a href="summary_ic.parquet">完整汇总 Parquet</a><a href="summary_ic.csv">完整汇总 CSV</a><a href="daily_ic.parquet">逐日明细 Parquet</a><a href="experiment_manifest.json">参数与验收记录</a></div>
 <p class="footnote">数据文件保留完整精度。网页采用 float32 存储并显示 3 位小数；已逐值核对。建议用新版 Edge / Chrome 打开此本地文件。phase = all_sample。</p></div></main>
 <script id="info" type="application/json">__INFO__</script><script id="payload" type="application/octet-stream">__PAYLOAD__</script>
@@ -77,7 +77,7 @@ function applyWindowInput(input,group){
 }
 function renderReviewNote(){
  const old=$('priorView').value==='original',all=windowRows(D.registry.filter(r=>r.kind==='computed'&&originMatch(r))),counts={positive:0,negative:0,uncertain:0};for(const r of all)counts[priorKey(r)]=(counts[priorKey(r)]||0)+1;
- $('reviewNote').textContent=(old?'原始登记：只显示原有表达与原假设。':'激进研究假设：正／负表示本次选择检验的主机制，不代表确定或显著；已看过本批期货结果。')+` 当前版本及来源下，计算输出正向 ${counts.positive}、负向 ${counts.negative}、不确定 ${counts.uncertain}（按${$('windowMode').value==='grouped'?'合并表达':'窗口版本'}计数，不含别名和质量）。`+' 合并模式下同一表达仅一行，行内可切换已算好的回看窗口或每段长度（2／5 秒分别覆盖两段共 4／10 秒）；先选窗口再按 IC 筛选，不自动挑选表现最好的窗口。';
+ $('reviewNote').textContent=(old?'原始登记：只显示原有表达与原假设。':'保守逻辑预期：额外延续、回归或交互主假设已撤回为不确定；保留原始买卖压力预期，不按 IC 颜色改符号。')+` 当前版本及来源下，计算输出正向 ${counts.positive}、负向 ${counts.negative}、不确定 ${counts.uncertain}（按${$('windowMode').value==='grouped'?'合并表达':'窗口版本'}计数，不含别名和质量）。`+' 合并模式下同一表达仅一行，行内可切换已算好的回看窗口或每段长度（2／5 秒分别覆盖两段共 4／10 秒）；先选窗口再按 IC 筛选，不自动挑选表现最好的窗口。';
 }
 function matchesPositive(r){
  if($('signFilter').value==='all')return true;
@@ -110,7 +110,7 @@ function render(){$('windowDefault').disabled=$('windowMode').value==='expanded'
  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
  if(tab==='families'){renderFamilies(rows);if(selected)showDetail(selected,selectedH,false);return}
  let html='<table><thead><tr><th class="pin1">家族 / 英文变量名</th><th class="pin2">中文定义 / 公式</th><th class="pin3">逻辑预期</th>'+D.horizons.map(u=>`<th style="min-width:70px;width:70px">${u}s</th>`).join('')+'</tr></thead><tbody>';
- for(const r of rows.slice(page*size,(page+1)*size)){const tag=r.kind==='alias'?'别名':r.kind==='quality'?'质量':r.history_seconds?r.history_seconds+'s':'快照/累计';html+=`<tr class="frow" data-factor="${esc(r.factor)}"><td class="pin1"><span class="tag ${r.kind}">${tag}</span>${r.family_id} ${esc(r.family)}<span class="variable">${esc(r.factor)}</span>${windowControl(r)}${r.review_origin==='derived'?'<span class="tag">新增方向表达</span>':r.review_change==='new_hypothesis'?'<span class="tag">预期已审阅</span>':''}</td><td class="pin2">${esc(r.name_zh)}<span class="formula">${esc(r.definition)}</span></td><td class="pin3">${prior(r)}</td>`;
+ for(const r of rows.slice(page*size,(page+1)*size)){const tag=r.kind==='alias'?'别名':r.kind==='quality'?'质量':r.history_seconds?r.history_seconds+'s':'快照/累计';html+=`<tr class="frow" data-factor="${esc(r.factor)}"><td class="pin1"><span class="tag ${r.kind}">${tag}</span>${r.family_id} ${esc(r.family)}<span class="variable">${esc(r.factor)}</span>${windowControl(r)}${r.review_origin==='derived'?'<span class="tag">新增方向表达</span>':r.review_change==='assumption_withdrawn'?'<span class="tag">主假设已撤回</span>':r.review_change==='new_hypothesis'?'<span class="tag">预期已审阅</span>':''}</td><td class="pin2">${esc(r.name_zh)}<span class="formula">${esc(r.definition)}</span></td><td class="pin3">${prior(r)}</td>`;
  if(r.kind==='quality')html+=`<td colspan="30" style="color:#6b7d87">质量字段，不计算方向 IC。有效 ${r.valid_rows.toLocaleString()} / ${D.meta.atomic_rows.toLocaleString()} 行（${pct(r.coverage)}），${r.valid_dates} 日；点击查看支持数量和缺失原因。</td>`;
  else for(const u of D.horizons){const v=get(r,u,'mean_'+$('method').value),nd=get(r,u,$('method').value==='ic'?'valid_ic_days':'valid_days'),tone=v>0?'8,125,128':'183,72,73',alpha=Number.isFinite(v)?Math.min(.23,Math.abs(v)*.65):0;html+=`<td class="number ${v>0?'pos':v<0?'neg':''}" data-h="${u}" style="background:rgba(${tone},${alpha})" title="${u}s 原始 IC：${fmt(v,6)}；${nd} 个有效日期；统计方向不等于显著性">${signed(v)}</td>`}html+='</tr>'}
  html+='</tbody></table>';$('table').innerHTML=rows.length?html:'<div class="empty">当前筛选没有输出，请调整家族、历史窗口或搜索词。</div>';
@@ -123,8 +123,8 @@ function chart(r,kind){const method=$('method').value,points=D.horizons.map(u=>g
 function reviewDetail(r){
  if(!r.review_version||r.kind==='quality')return '';
  const old=r.review_origin==='derived'?'原版无此表达':priorNames[r['original_expected_sign_'+$('target').value]],now=priorNames[r['expected_sign_'+$('target').value]];
- let h=`<div class="notice"><b>逻辑预期对照：${esc(old)} → ${esc(now)}</b><br>当前选择：${$('priorView').value==='original'?'原始登记':'激进研究假设'}。${esc(r.review_origin==='derived'?'新增表达；旧父因子仍完整保留。':r.review_change==='new_hypothesis'?'只修改研究假设；原因子值及全部原始 IC 不变。':'保留原方向或继续不确定。')}</div>`;
- if($('target').value==='signed'&&$('priorView').value==='review')h+=`<div class="details-grid"><div><h3>本次选择的机制</h3><p>${esc(r.logical_reason)}</p><p class="footnote">成立条件：${esc(r.hypothesis_condition)}</p></div><div><h3>相反机制／下一步潜力</h3><p>${esc(r.alternative_mechanism)}</p><p class="footnote">版本：${esc(r.review_version)}；明确研究假设不代表已经证实。</p></div></div>`;
+ let h=`<div class="notice"><b>逻辑预期对照：${esc(old)} → ${esc(now)}</b><br>当前选择：${$('priorView').value==='original'?'原始登记':'保守逻辑预期'}。${esc(r.review_origin==='derived'?'新增表达；旧父因子仍完整保留。':r.review_change==='new_hypothesis'?'只修改研究假设；原因子值及全部原始 IC 不变。':'保留原方向或继续不确定。')}</div>`;
+ if($('target').value==='signed'&&$('priorView').value==='review')h+=`<div class="details-grid"><div><h3>当前判断依据</h3><p>${esc(r.logical_reason)}</p><p class="footnote">成立条件：${esc(r.hypothesis_condition)}</p></div><div><h3>相反机制／下一步潜力</h3><p>${esc(r.alternative_mechanism)}</p><p class="footnote">版本：${esc(r.review_version)}；明确研究假设不代表已经证实。</p></div></div>`;
  if(r.review_origin==='derived')h+=`<p class="footnote">父因子：${esc(r.parent_factors)}。因果组合只使用信号时点的已知值；父因子缺失继续缺失。带条件的有效未激活项记零，因此主 IC 包含这些零任务。该表达与父因子共享信息，未宣称独立增量。</p>`;
  return h;
 }

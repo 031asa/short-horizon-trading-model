@@ -146,7 +146,7 @@ def variants(histories=(5,10)):
     return out
 
 
-def reviewed_registry(base):
+def reviewed_registry(base, conservative=True):
     base=base.copy()
     assert 'review_origin' not in base, 'Pass the original PDF catalog, not an already reviewed registry'
     rules=_decisions()
@@ -198,7 +198,30 @@ def reviewed_registry(base):
         from utils.factor_catalog import FAMILIES
         row['family']=FAMILIES[row['family_id']]
         additions.append(row)
-    return pd.concat([base,pd.DataFrame(additions)],ignore_index=True)
+    result = pd.concat([base,pd.DataFrame(additions)],ignore_index=True)
+    return conservative_registry(result) if conservative else result
+
+
+CONSERVATIVE_VERSION = 'directional-conservative-20260922-v1'
+
+def conservative_registry(registry):
+    """Withdraw extra directional assumptions without reading prices or IC."""
+    result=registry.copy()
+    if 'aggressive_expected_sign_signed' not in result:
+        result['aggressive_expected_sign_signed']=result.expected_sign_signed
+        result['aggressive_logical_reason']=result.logical_reason
+        result['aggressive_hypothesis_condition']=result.hypothesis_condition
+    for saved,current in [('aggressive_expected_sign_signed','expected_sign_signed'),('aggressive_logical_reason','logical_reason'),('aggressive_hypothesis_condition','hypothesis_condition')]:
+        result[saved]=result[saved].fillna(result[current])
+    mask=result.kind.ne('quality') & (result.review_origin.eq('derived') | result.original_expected_sign_signed.eq('uncertain')) & result.aggressive_expected_sign_signed.isin([P,N])
+    result.loc[mask,'expected_sign_signed']=U
+    result.loc[mask,'review_change']='assumption_withdrawn'
+    result.loc[mask,'logical_reason']='暂不指定方向：此前的正负预期依赖额外选择延续、回归、单侧主导或交互加权机制；当前表达不能排除相反机制。'
+    result.loc[mask,'hypothesis_condition']='旧主假设只留作后续分组检验线索，不用于当前方向筛选。旧条件：'+result.loc[mask,'aggressive_hypothesis_condition'].fillna('')
+    result.loc[result.kind.ne('quality'),'prior_status']='保守逻辑预期；额外主假设已撤回，原始方向关系仍是待检验预期；未根据 IC 颜色调整。'
+    result['review_version']=CONSERVATIVE_VERSION
+    result.loc[result.kind.ne('quality'),'prior_version']=CONSERVATIVE_VERSION
+    return result
 
 
 def variant_values(spec, values):

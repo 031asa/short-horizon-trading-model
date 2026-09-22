@@ -8,7 +8,7 @@ from utils.directional_review import reviewed_registry,variants,enrich_atomic,va
 
 class DirectionalReviewTests(unittest.TestCase):
     def test_original_priors_and_definitions_preserved(self):
-        base=feature_registry(ICConfig());review=reviewed_registry(base)
+        base=feature_registry(ICConfig());review=reviewed_registry(base, conservative=False)
         old=review.loc[review.review_origin.eq('original')]
         for col in ('factor','definition','role','unit'):
             self.assertEqual(base[col].tolist(),old[col].tolist())
@@ -20,6 +20,14 @@ class DirectionalReviewTests(unittest.TestCase):
         self.assertFalse(review.factor.duplicated().any())
         names=set(base.factor)
         for spec in variants():self.assertTrue(set(spec['inputs'])<=names)
+
+    def test_conservative_priors_withdraw_extra_assumptions(self):
+        base=feature_registry(ICConfig());current=reviewed_registry(base)
+        old=current.loc[current.review_origin.eq('original')]
+        self.assertEqual(base.expected_sign_signed.tolist(),old.expected_sign_signed.tolist())
+        self.assertTrue(current.loc[current.review_origin.eq('derived'),'expected_sign_signed'].eq('uncertain').all())
+        self.assertEqual(base.expected_sign_absolute.tolist(),old.expected_sign_absolute.tolist())
+        self.assertTrue(current.loc[current.review_change.eq('assumption_withdrawn'),'aggressive_expected_sign_signed'].isin(['positive','negative']).all())
 
     def test_gating_direction_and_neutral_zero(self):
         vals={'m':np.array([2.,-2.,2.,-2.,0.]),'o':np.array([1.,-1.,-1.,1.,0.])}
