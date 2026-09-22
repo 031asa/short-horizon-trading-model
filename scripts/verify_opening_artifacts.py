@@ -19,10 +19,10 @@ def verify(folder):
     for row in r.loc[r.kind.eq('alias')].itertuples():np.testing.assert_allclose(a[row.factor],a[row.alias_of],equal_nan=True)
     p=pd.read_csv(out/'factor_hypotheses.csv');cols=['factor','expected_sign_signed','expected_sign_absolute','prior_version']
     if 'review_origin' in r:
-        original=r.loc[r.evaluate & r.review_origin.eq('original')].copy()
+        original=r.loc[r.evaluate & r.review_origin.eq('original') & ~r.get('window_extension',pd.Series(False,index=r.index)).fillna(False)].copy()
         for col in cols[1:]:original[col]=original['original_'+col]
         pd.testing.assert_frame_equal(p.loc[p.evaluate,cols].reset_index(drop=True),original[cols].reset_index(drop=True))
-        frozen=pd.read_csv(out/'directional_hypotheses.csv')
+        frozen=pd.read_csv(out/('window_hypotheses.csv' if 'window_extension' in r else 'directional_hypotheses.csv'))
         pd.testing.assert_frame_equal(frozen,r)
     else:
         pd.testing.assert_frame_equal(p.loc[p.evaluate,cols].reset_index(drop=True),r.loc[r.evaluate,cols].reset_index(drop=True))

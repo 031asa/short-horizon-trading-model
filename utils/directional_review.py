@@ -84,7 +84,7 @@ def _remaining_reason(row):
             '可与当时已知的 QI、OFI 或趋势方向构造交互；新增项有明确父因子，原值继续保留。')
 
 
-def variants():
+def variants(histories=(5,10)):
     """All constants fixed here; no optimization by horizon, day or observed IC."""
     out = []
     def add(name, parent, inputs, operation, title, formula, reason, condition,
@@ -98,7 +98,7 @@ def variants():
     add('A05_SignedStateAge', 'A05_StateAge', ['A05_QIState','A05_StateAge'], 'signed_log',
         '带方向的失衡持续年龄', 'QIState * log1p(StateAge / 1 second)', '将无方向的年龄与买／卖失衡状态结合，采用持续压力假设。',
         '年龄起点精确可知；持续状态尚未进入耗尽阶段。')
-    for h in (5,10):
+    for h in histories:
         s=f'_h{h}s'
         add('A02_QIThinDepth'+s,'A02_DepthLogRatio'+s,['F01_QI','A02_DepthLogRatio'+s],'thin',
             '相对薄深度加权队列方向','QI / (1 + exp(DepthLogRatio))','深度相对历史越薄，已有队列方向获得越大权重。',
@@ -179,7 +179,8 @@ def reviewed_registry(base):
         for col in ('expected_sign_signed','logical_reason','hypothesis_condition','alternative_mechanism','review_change'):
             base.loc[i,col]=target[col]
     additions=[]
-    for spec in variants():
+    histories=tuple(sorted(base.loc[base.factor.str.match(r'A03_QIMean_h\d+s$'),'history_seconds'].unique()))
+    for spec in variants(histories):
         parent=base.set_index('factor').loc[spec['parent']].to_dict()
         row={**parent,**{k:spec[k] for k in ('factor','name_zh','definition','logical_reason','hypothesis_condition','unit','expected_sign_signed')}}
         row.update(kind='computed',evaluate=True,alias_of='',role='direction',
@@ -220,10 +221,10 @@ def variant_values(spec, values):
     raise ValueError(op)
 
 
-def enrich_atomic(atomic):
+def enrich_atomic(atomic,histories=(5,10)):
     """Only current-row factor columns are read; never label or future columns."""
     add={}
-    for spec in variants():
+    for spec in variants(histories):
         valid=np.ones(len(atomic),dtype=bool)
         statuses=np.full(len(atomic),'ok',dtype=object)
         for parent in spec['inputs']:

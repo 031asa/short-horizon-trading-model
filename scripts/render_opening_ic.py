@@ -12,24 +12,43 @@ METRICS=['mean_ic','mean_rank_ic','median_ic','median_rank_ic','std_ic','std_ran
          'mean_pairs','total_pairs','mean_scheduled_coverage','positive_ic_days','negative_ic_days',
          'positive_rank_ic_days','negative_rank_ic_days','days_not_enough_pairs','days_constant_factor','days_constant_label','mean_zero_return_share']
 
+
+def refresh_dashboard_template(output):
+    """Reuse an already verified embedded payload for presentation-only changes."""
+    path=Path(output)/'全部因子IC与衰减.html';html=path.read_text(encoding='utf-8')
+    info=html.split('<script id="info" type="application/json">',1)[1].split('</script>',1)[0]
+    payload=html.split('<script id="payload" type="application/octet-stream">',1)[1].split('</script>',1)[0]
+    data=json.loads(info)
+    template=(Path(__file__).resolve().parents[1]/'utils/ic_dashboard.html').read_text(encoding='utf-8')
+    if len(data['meta']['config']['history_seconds'])>2:
+        template=template.replace('普通历史窗口 5／10 秒','普通回看窗口支持输入 1–10 秒整数')
+    path.write_text(template.replace('__INFO__',info).replace('__PAYLOAD__',payload),encoding='utf-8')
+
 def dashboard_payload(summary,registry,coverage,metadata):
     names=registry.loc[registry.evaluate,'factor'].tolist()
     observations=metadata['config']['schedule']['observation_seconds']
     horizons=metadata['config']['horizons_seconds']
     combos=list(product(observations,('decision','arrival'),('cumulative','incremental'),('signed','absolute'),('own','common_observations_horizons')))
-    keys=['observation_seconds','anchor','label_type','target','pair_set','factor','horizon_seconds']
-    index=pd.MultiIndex.from_tuples([(*c,f,h) for c in combos for f in names for h in horizons],names=keys)
-    ordered=summary.set_index(keys).reindex(index)
-    assert len(ordered)==len(summary) and ordered.phase.eq('all_sample').all()
-    arrays=ordered[METRICS].to_numpy(dtype='<f4')
-    finite=np.isfinite(arrays)
-    original=ordered[METRICS].to_numpy(float)
-    np.testing.assert_allclose(arrays[finite],original[finite],atol=1e-6,rtol=1e-6)
+    # Numeric addressing avoids millions of Python tuples and a second wide frame.
+    coordinate=summary.observation_seconds.map({v:i for i,v in enumerate(observations)}).to_numpy(np.int64)
+    for column,options in [('anchor',('decision','arrival')),('label_type',('cumulative','incremental')),
+                           ('target',('signed','absolute')),('pair_set',('own','common_observations_horizons'))]:
+        coordinate=coordinate*2+summary[column].map({v:i for i,v in enumerate(options)}).to_numpy(np.int64)
+    coordinate=(coordinate*len(names)+summary.factor.map({v:i for i,v in enumerate(names)}).to_numpy(np.int64))*len(horizons)
+    coordinate+=summary.horizon_seconds.map({v:i for i,v in enumerate(horizons)}).to_numpy(np.int64)
+    n=len(combos)*len(names)*len(horizons)
+    assert len(summary)==n and summary.phase.eq('all_sample').all()
+    assert len(np.unique(coordinate))==n and coordinate.min()==0 and coordinate.max()==n-1
+    arrays=np.empty((n,len(METRICS)),dtype='<f4')
+    for i,metric in enumerate(METRICS):
+        values=summary[metric].to_numpy(float)
+        arrays[coordinate,i]=values
+        np.testing.assert_allclose(arrays[coordinate,i],values,atol=1e-6,rtol=1e-6,equal_nan=True)
     registry_records=coverage.fillna('').to_dict('records')
     for r in registry_records:r['status_counts']=json.loads(r['status_counts'])
     info=dict(families=FAMILIES,registry=registry_records,factors=names,metrics=METRICS,combos=combos,horizons=horizons,
         meta={k:metadata[k] for k in ('atomic_rows','included_dates','excluded_openings','opening_gaps','computed_outputs','alias_outputs','quality_outputs','registry_outputs','prior_version','config')})
-    packed=gzip.compress(arrays.tobytes(order='C'),compresslevel=9,mtime=0)
+    packed=gzip.compress(arrays.tobytes(order='C'),compresslevel=6,mtime=0)
     # Verify the exact embedded payload, including every row/metric, before rendering.
     np.testing.assert_array_equal(np.frombuffer(gzip.decompress(packed),dtype='<f4').reshape(arrays.shape),arrays)
     metadata['verification']['dashboard_aggregate_values_checked']=int(arrays.size)
@@ -42,6 +61,8 @@ def render_report(summary,registry,coverage,metadata,output):
     filter_positive(output)
     info,payload=dashboard_payload(summary,registry,coverage,metadata)
     template=(Path(__file__).resolve().parents[1]/'utils/ic_dashboard.html').read_text(encoding='utf-8')
+    if metadata.get('window_extension'):
+        template=template.replace('普通历史窗口 5／10 秒','普通回看窗口支持输入 1–10 秒整数')
     (output/'全部因子IC与衰减.html').write_text(template.replace('__INFO__',info).replace('__PAYLOAD__',payload),encoding='utf-8')
     missing=coverage.loc[coverage.evaluate & coverage.valid_rows.eq(0)]
     base=summary.loc[summary.observation_seconds.eq(1)&summary.anchor.eq('decision')&summary.label_type.eq('cumulative')&summary.target.eq('signed')&summary.pair_set.eq('own')]
@@ -90,6 +111,9 @@ def render_report(summary,registry,coverage,metadata,output):
         lines=[line.replace('逻辑预期在新增 IC 前登记于 factor_hypotheses.csv。此前已看过部分期货结果，因此标为研究假设；后续 ETF 研究前可冻结为其事前假设。后续补充的质量诊断字段仅登记在 feature_registry.csv，全部为不适用；已计算因子的预期与原始登记逐项一致。',
             '原始假设保留在 factor_hypotheses.csv；用户批准的激进机制审阅另存 directional_hypotheses.csv，含旧预期、主机制、条件与竞争机制。原有 96 个不确定输出升级假设，28 个新增表达在本次重测前冻结。已看过该批期货结果，不能称期货事前假设。') for line in lines]
         lines.insert(6,'新增 [有方向逻辑预期审阅](有方向逻辑预期审阅.md)：默认激进研究假设，可切回原始登记；旧表达及其 IC 均不变。')
+    if metadata.get('window_extension'):
+        lines=[line.replace('普通窗口 5／10 秒','普通窗口 1–10 秒整数').replace('普通历史 5／10 秒','普通历史 1–10 秒整数') for line in lines]
+        lines.insert(4,'当前 [回看窗口可输入](可输入回看窗口说明.md)：182 种计算表达合并展示，1–10 秒共保留 1,271 个计算版本；固定事件、滞后与短长参数另行标注。window_hypotheses.csv 是新增参数计算前的登记。')
     (output/'IC研究结果.md').write_text('\n'.join(lines),encoding='utf-8')
     anomaly=['# 数据异常说明','', '## 行情缺失','', '整段无开盘行情并排除：'+ '、'.join(x['trade_date'] for x in metadata['excluded_openings'])+'。','']
     for g in metadata['opening_gaps']:anomaly.append(f"- {g['start']} → {g['end']}，间隔 {g['seconds']:g} 秒。检查范围延伸至开盘后 96 秒。")

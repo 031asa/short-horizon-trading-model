@@ -88,3 +88,26 @@ IC 不是预测正确率或交易收益。重叠标签、同一时刻的重复�
 单元测试入口先加载项目 PyArrow，再加载 pandas，避免混用系统和项目 Arrow 版本造成扩展类型注册冲突。当前 49 项测试；真实数据另核对新因子的父输入有效性交集、跨缺口／未来扰动、所有新增因子的独立逐日相关与汇总，网页校验原／新假设、来源筛选和原始 IC 不变。完整证据保存在结果目录。
 
 原版绿色筛选的 31／4 是“原始登记”口径；本次默认“激进研究假设”下为 64 个至少一期为正、5 个全部 30 期为正。这只是展示条件，不能将数量增加解释为预测能力改善。完整 IC 始终保留红色和缺失期限。
+
+## 可输入的回看窗口（最新展示）
+
+普通回看扩展为 **1–10 秒整数**。默认按表达合并，不再为同一表达的每个窗口重复列一行；上方输入全局默认值，或在行内输入单独的回看秒数，按 Enter／失焦后应用。当前为 **182 种计算表达、1,271 个计算版本**，加上 6 个别名和 1,100 个质量版本。38 日、9,500 个任务行、全部 LastPrice 标签与 IC 统计方法不变。
+
+输入只切换已经真实计算的参数版本，不插值或在线拟合 IC。当前不接受小数、0、负值或超过 10 秒的输入。别名、固定事件参数、短长均线及外层统计分别标注：前后两段仍各 2／5 秒，M04/M05 滞后 2 秒，M06 为 5／10 秒，M07–M09 外层 5 秒，B09 为历史 10 秒／事件 2 秒，D09 滞后版为历史 10 秒／滞后 2 秒。快照／累计表达没有可随意替换的普通回看参数。
+
+原始登记视图只展示之前的 5／10 秒原始表达；新增回看参数记录于 `window_hypotheses.csv`，在计算前冻结并沿用相同表达的机制假设。共同样本仍针对单一回看版本，跨观察期及未来期限求交集；不跨回看窗口。不能把窗口版本数量当成独立因子数量，也没有自动选优窗口。
+
+`scripts/extend_history_windows.py` 接在已完成的方向审阅之后运行。先将当前审阅实验保存到 `.cache/history_window_base`，逐日计算新增窗口，再按家族并行计算新增 IC；原有值、状态、标签和全部 IC 对照保持一致。候选目录为 `.window_pending`，可恢复已完成的日期和家族计算。
+
+```powershell
+& $projectPython -X utf8 scripts/extend_history_windows.py features
+& $projectPython -X utf8 scripts/extend_history_windows.py evaluate
+& $projectPython -X utf8 scripts/extend_history_windows.py render
+& $projectPython -X utf8 scripts/test_opening.py result/opening_execution/.window_pending
+& $projectPython -X utf8 scripts/verify_opening_artifacts.py result/opening_execution/.window_pending
+& $projectPython -X utf8 scripts/verify_history_windows.py result/opening_execution/.window_pending
+& 'C:/Users/Hello/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe' tests/opening_dashboard.cjs result/opening_execution/.window_pending
+& $projectPython -X utf8 scripts/extend_history_windows.py publish
+```
+
+本轮新增 4 项历史窗口测试，合计 53 项。包括真实回看起点、短窗支持门槛、旧窗不变与历史派生因果性。完整数据核查与输入框测试另存结果目录。绿色筛选 CSV 展开全部窗口版本，网页默认合并窗口；需选择“展开全部窗口版本”才能直接对照 CSV 数量。详细说明见 `result/opening_execution/可输入回看窗口说明.md`。

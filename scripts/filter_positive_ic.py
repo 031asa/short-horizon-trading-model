@@ -35,7 +35,7 @@ def filter_positive(output):
             **{f'IC_{u}s':full.loc[u,'mean_rank_ic'] for u in range(1,31)}))
     result=pd.DataFrame(rows);result.to_csv(output/'逻辑正向且绿色IC_筛选清单.csv',index=False,encoding='utf-8-sig')
     lines=['# 逻辑正向且绿色 IC 筛选','',
-        '固定查看口径：全部 38 日；观察 1 秒；观察结束基准；有方向累计 LastPrice 价变；逐期限有效样本；Spearman Rank IC。',
+        '固定导出口径：全部 38 日；观察 1 秒；观察结束基准；有方向累计 LastPrice 价变；逐期限有效样本；Spearman Rank IC；展开所有回看版本。网页默认合并窗口并采用 5 秒，切换“展开全部窗口版本”才能直接对照本 CSV 数量。',
         '筛选条件：当前登记版本的逻辑预期 positive，且平均日 Rank IC > 0。审阅版导出采用激进研究假设；网页可切回原始登记。IC 保留原值；别名不重复计入。',
         f'共 {len(result)} 个因子至少一期为正，其中 {int(result.all_30_positive.sum())} 个全部 30 期为正。一个绿色期限不代表整条曲线为正；本表仅按所选条件展示。','',
         '[打开筛选网页](全部因子IC与衰减.html#positive) · [完整筛选清单 CSV](逻辑正向且绿色IC_筛选清单.csv)','',
@@ -45,7 +45,7 @@ def filter_positive(output):
     (output/'逻辑正向且绿色IC_筛选说明.md').write_text('\n'.join(lines),encoding='utf-8')
     cases=[]
     for view in (('review','original') if 'review_origin' in candidates else ('original',)):
-        viewed=candidates if view=='review' or 'review_origin' not in candidates else candidates.loc[candidates.review_origin.eq('original')]
+        viewed=candidates if view=='review' or 'review_origin' not in candidates else candidates.loc[candidates.review_origin.eq('original') & ~candidates.get('window_extension',pd.Series(False,index=candidates.index)).fillna(False)]
         for target in ('signed','absolute'):
             key=('original_' if view=='original' and 'review_origin' in candidates else '')+'expected_sign_'+target
             names=viewed.loc[viewed[key].eq('positive'),'factor']

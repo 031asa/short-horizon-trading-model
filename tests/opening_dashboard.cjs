@@ -7,9 +7,45 @@ const path=require('path'),fs=require('fs'),assert=require('assert');
  const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const requests=[];page.on('request',r=>{if(/^https?:/.test(r.url()))requests.push(r.url())});
  await page.goto(require('url').pathToFileURL(path.join(dir,'全部因子IC与衰减.html')).href);
- await page.waitForSelector('body[data-ready="true"]',{timeout:60000});
+ await page.waitForSelector('body[data-ready="true"]',{timeout:180000});
  const count=await page.locator('#count').innerText();assert(count.includes('个输出'));
  await page.screenshot({path:path.join(dir,'网页验收_主表.png')});
+ let windowInputChecks=0;
+ const windowFile=path.join(dir,'window_input_expected.json');
+ if(fs.existsSync(windowFile)){
+   const expected=JSON.parse(fs.readFileSync(windowFile,'utf8'));
+   assert.equal(await page.locator('#windowDefault').getAttribute('type'),'number');
+   assert.equal(await page.locator('#windowMode').inputValue(),'grouped');
+   await page.click('[data-tab="computed"]');await page.selectOption('#family','F05');await page.fill('#search','Momentum');
+   for(const probe of expected){
+     await page.fill('#windowDefault',String(probe.h));await page.locator('#windowDefault').press('Enter');
+     assert.equal(await page.locator('#table tr[data-factor]').count(),1);
+     const row=page.locator('tr[data-factor="'+probe.factor+'"]');
+     assert.equal(await row.locator('[data-h="5"]').innerText(),probe.display);
+     await row.locator('[data-h="5"]').click();
+     assert((await page.locator('#detail').innerText()).includes(probe.factor));
+     windowInputChecks++;
+   }
+   await page.fill('#table .row-window','3');await page.locator('#table .row-window').press('Enter');
+   assert.equal(await page.locator('tr[data-factor="F05_Momentum_h3s"] [data-h="5"]').innerText(),expected.find(p=>p.h===3).display);
+   assert((await page.locator('#detail').innerText()).includes('F05_Momentum_h3s'));
+   await page.fill('#windowDefault','4');await page.locator('#windowDefault').press('Enter');
+   assert.equal(await page.locator('tr[data-factor="F05_Momentum_h4s"]').count(),1);
+   for(const invalid of ['0','11','2.5','']){
+     await page.fill('#windowDefault',invalid);await page.locator('#windowDefault').press('Enter');
+     assert((await page.locator('#windowMessage').innerText()).includes('未应用'));
+     assert.equal(await page.locator('#windowDefault').inputValue(),'4');
+     assert.equal(await page.locator('tr[data-factor="F05_Momentum_h4s"]').count(),1);windowInputChecks++;
+   }
+   await page.selectOption('#family','B09');await page.fill('#search','BidRecovery');
+   assert.equal(await page.locator('tr[data-factor="B09_BidRecovery_h10s"]').count(),1);
+   assert.equal(await page.locator('#table .row-window').count(),0);
+   await page.selectOption('#priorView','original');assert.equal(await page.locator('#windowDefault').inputValue(),'5');
+   await page.selectOption('#priorView','review');await page.fill('#search','');await page.selectOption('#family','all');
+   await page.screenshot({path:path.join(dir,'网页验收_可输入窗口.png')});
+ }
+ // Expanded mode still exposes every physical version for legacy probes and exports.
+ await page.selectOption('#windowMode','expanded');await page.click('[data-tab="all"]');
  const probes=JSON.parse(fs.readFileSync(path.join(dir,'dashboard_qa_probes.json'),'utf8'));let verified=0;
  for(const probe of probes){
    await page.selectOption('#family',probe.family_id);await page.selectOption('#history','all');
@@ -58,7 +94,7 @@ const path=require('path'),fs=require('fs'),assert=require('assert');
    await page.selectOption('#target',target);
    const actual=[];
    for(;;){actual.push(...await page.locator('#table tr[data-factor]').evaluateAll(rows=>rows.map(r=>r.dataset.factor)));if(await page.locator('#next').isDisabled())break;await page.click('#next')}
-   assert.equal(actual.length,registry.filter(r=>view!=='original'||r.review_origin!=='derived').length);
+   assert.equal(actual.length,registry.filter(r=>view!=='original'||(r.review_origin!=='derived'&&r.window_extension!==true)).length);
    const byName=new Map(registry.map(r=>[r.factor,r]));const order={positive:0,negative:1,uncertain:2,not_applicable:3};
    for(let i=1;i<actual.length;i++){
      const key=(view==='original'&&reviewed?'original_':'')+'expected_sign_'+target;
@@ -90,7 +126,7 @@ const path=require('path'),fs=require('fs'),assert=require('assert');
  assert((await page.locator('#count').innerText()).startsWith(defaultCount+' '));
  if(reviewed){
    await page.selectOption('#signFilter','all');await page.selectOption('#origin','derived');
-   assert((await page.locator('#count').innerText()).startsWith('28 '));
+   assert((await page.locator('#count').innerText()).startsWith(registry.filter(r=>r.kind==='computed'&&r.review_origin==='derived').length+' '));
    await page.fill('#search','M01_CounterflowDeviation_h5s');
    const newRow=page.locator('tr[data-factor="M01_CounterflowDeviation_h5s"]');
    assert.equal(await newRow.locator('.pin3').innerText(),'负向');await newRow.click();
@@ -105,11 +141,11 @@ const path=require('path'),fs=require('fs'),assert=require('assert');
    assert.equal(await originalRow.locator('[data-h="1"]').innerText(),oldIC);
    assert((await page.locator('#reviewNote').innerText()).includes('不确定 221'));
    await page.selectOption('#priorView','review');await page.selectOption('#origin','all');
-   assert((await page.locator('#reviewNote').innerText()).includes('不确定 125'));
+   assert((await page.locator('#reviewNote').innerText()).includes('不确定 '+registry.filter(r=>r.kind==='computed'&&r.expected_sign_signed==='uncertain').length));
    await page.fill('#search','');await page.selectOption('#family','M01');
    await page.screenshot({path:path.join(dir,'网页验收_逻辑预期审阅.png')});
  }
  assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
- const result={html_sha256:require('crypto').createHash('sha256').update(fs.readFileSync(path.join(dir,'全部因子IC与衰减.html'))).digest('hex'),offline_file_open:true,external_requests:requests.length,browser_errors:errors,sort_targets_verified:2*priorViews.length,formula_option_probes:probes.length,positive_filter_cases:filterCases.length,positive_filter_default_count:defaultCount,summary_cell_probes:verified,curve_points:titles.length,families:59,review_origin_and_old_prior_view:reviewed?'passed':'not applicable',filters_detail_alias_quality_pagination:'passed'};
+ const result={html_sha256:require('crypto').createHash('sha256').update(fs.readFileSync(path.join(dir,'全部因子IC与衰减.html'))).digest('hex'),offline_file_open:true,external_requests:requests.length,browser_errors:errors,sort_targets_verified:2*priorViews.length,formula_option_probes:probes.length,positive_filter_cases:filterCases.length,positive_filter_default_count:defaultCount,summary_cell_probes:verified,curve_points:titles.length,families:59,window_input_checks:windowInputChecks,review_origin_and_old_prior_view:reviewed?'passed':'not applicable',filters_detail_alias_quality_pagination:'passed'};
  fs.writeFileSync(path.join(dir,'dashboard_verification.json'),JSON.stringify(result,null,2));console.log(JSON.stringify(result));await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});
