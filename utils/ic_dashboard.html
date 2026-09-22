@@ -45,37 +45,39 @@ function get(r,u,metric,kind=$('kind').value,pairOverride){const name=r.kind==='
 function priorKey(r){const key='expected_sign_'+$('target').value;return $('priorView').value==='original'?(r['original_'+key]||r[key]):r[key]}
 function prior(r){return priorNames[priorKey(r)]||'不确定'}
 function originMatch(r){return !($('priorView').value==='original'&&(r.review_origin==='derived'||r.window_extension===true))&&($('origin').value==='all'||(r.review_origin||'original')===$('origin').value)}
-const windowChoices=new Map();let appliedWindow=5;
-function availableWindows(){return [...new Set(D.registry.filter(r=>originMatch(r)&&windowGroup(r).length>1).map(r=>r.history_seconds))].sort((a,b)=>a-b)}
-function windowKey(r){return r.kind+'|'+r.factor.replace(/_h\d+s(?=_|$)/,'_h{W}s')}
+const windowChoices=new Map(),segmentChoices=new Map();let appliedWindow=5;
+function isSegment(r){return /^(A08|C08|D03|R05)_/.test(r.factor)&&!/_h\d+s/.test(r.factor)&&/_lag(?:2|5)s$/.test(r.factor)}
+function parameterValue(r){return isSegment(r)?Number(r.factor.match(/_lag(\d+)s$/)[1]):r.history_seconds}
+function availableWindows(){return [...new Set(D.registry.filter(r=>originMatch(r)&&!isSegment(r)&&windowGroup(r).length>1).map(r=>r.history_seconds))].sort((a,b)=>a-b)}
+function windowKey(r){return r.kind+'|'+(isSegment(r)?r.factor.replace(/_lag\d+s$/,'_lag{S}s'):r.factor.replace(/_h\d+s(?=_|$)/,'_h{W}s'))}
 const windowIndex=new Map();for(const r of D.registry){const k=windowKey(r);if(!windowIndex.has(k))windowIndex.set(k,[]);windowIndex.get(k).push(r)}
-function windowGroup(r){return windowIndex.get(windowKey(r)).filter(originMatch).sort((a,b)=>a.history_seconds-b.history_seconds)}
+function windowGroup(r){return windowIndex.get(windowKey(r)).filter(originMatch).sort((a,b)=>parameterValue(a)-parameterValue(b))}
 function windowRows(records){
  if($('windowMode').value==='expanded')return records;
  const groups=new Map();for(const r of records){const k=windowKey(r);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r)}
- return [...groups.entries()].map(([k,rs])=>{const target=$('history').value==='all'?(windowChoices.get(k)||appliedWindow):+$('history').value;return rs.find(r=>r.history_seconds===target)||rs[0]});
+ return [...groups.entries()].map(([k,rs])=>{const target=isSegment(rs[0])?(segmentChoices.get(k)||2):($('history').value==='all'?(windowChoices.get(k)||appliedWindow):+$('history').value);return rs.find(r=>parameterValue(r)===target)||rs[0]});
 }
 function windowControl(r){
  if($('windowMode').value==='expanded')return '';
  const group=windowGroup(r);
  if(group.length<2)return `<span class="formula">${r.history_seconds?'固定回看 '+r.history_seconds+' 秒':'快照／累计／分段参数，见定义'}</span>`;
- return `<label class="formula">回看 <input type="number" class="row-window" min="${group[0].history_seconds}" max="${group.at(-1).history_seconds}" step="1" value="${r.history_seconds}" aria-label="${esc(windowKey(r))} 回看窗口" style="min-width:66px;width:66px;min-height:28px;padding:3px" ${$('history').value!=='all'?'disabled':''}> 秒</label>`;
+ return `<label class="formula">${isSegment(r)?'每段长度':'回看'} <input type="number" class="row-window" min="${parameterValue(group[0])}" max="${parameterValue(group.at(-1))}" step="1" value="${parameterValue(r)}" aria-label="${esc(windowKey(r))} ${isSegment(r)?'每段长度':'回看窗口'}" style="min-width:66px;width:66px;min-height:28px;padding:3px" ${!isSegment(r)&&$('history').value!=='all'?'disabled':''}> 秒${isSegment(r)?'（可用 2／5；两段共 '+(2*parameterValue(r))+' 秒）':''}</label>`;
 }
 function applyWindowInput(input,group){
- const value=Number(input.value),allowed=group?group.map(r=>r.history_seconds):availableWindows();
+ const value=Number(input.value),allowed=group?group.map(parameterValue):availableWindows();
  if(!input.value.trim()||!Number.isInteger(value)||!allowed.includes(value)){
   $('windowMessage').textContent='未应用：当前可输入已计算的 '+allowed.join('、')+' 秒整数；不对未计算窗口插值。';
-  input.value=group?group.find(r=>r.factor===input.closest('[data-factor]').dataset.factor).history_seconds:appliedWindow;
+  input.value=group?parameterValue(group.find(r=>r.factor===input.closest('[data-factor]').dataset.factor)):appliedWindow;
   return;
  }
- $('windowMessage').textContent='已应用 '+value+' 秒回看；行内单独输入优先，固定参数因子按其登记值。';
- if(group){const next=group.find(r=>r.history_seconds===value);windowChoices.set(windowKey(next),value);if(selected&&windowKey(selected)===windowKey(next))selected=next}
- else {appliedWindow=value;windowChoices.clear();$('history').value='all';if(selected)selected=windowGroup(selected).find(r=>r.history_seconds===value)||selected}
+ $('windowMessage').textContent=group&&isSegment(group[0])?'已应用每段 '+value+' 秒：比较相邻两段，共 '+(2*value)+' 秒；普通回看输入不改变此参数。':'已应用 '+value+' 秒回看；行内单独输入优先，固定参数因子按其登记值。';
+ if(group){const next=group.find(r=>parameterValue(r)===value);(isSegment(next)?segmentChoices:windowChoices).set(windowKey(next),value);if(selected&&windowKey(selected)===windowKey(next))selected=next}
+ else {appliedWindow=value;windowChoices.clear();$('history').value='all';if(selected&&!isSegment(selected))selected=windowGroup(selected).find(r=>r.history_seconds===value)||selected}
  page=0;render();
 }
 function renderReviewNote(){
  const old=$('priorView').value==='original',all=windowRows(D.registry.filter(r=>r.kind==='computed'&&originMatch(r))),counts={positive:0,negative:0,uncertain:0};for(const r of all)counts[priorKey(r)]=(counts[priorKey(r)]||0)+1;
- $('reviewNote').textContent=(old?'原始登记：只显示原有表达与原假设。':'激进研究假设：正／负表示本次选择检验的主机制，不代表确定或显著；已看过本批期货结果。')+` 当前版本及来源下，计算输出正向 ${counts.positive}、负向 ${counts.negative}、不确定 ${counts.uncertain}（按${$('windowMode').value==='grouped'?'合并表达':'窗口版本'}计数，不含别名和质量）。`+' 合并模式下同一表达仅一行，行内可切换已算好的回看窗口；先选窗口再按 IC 筛选，不自动挑选表现最好的窗口。';
+ $('reviewNote').textContent=(old?'原始登记：只显示原有表达与原假设。':'激进研究假设：正／负表示本次选择检验的主机制，不代表确定或显著；已看过本批期货结果。')+` 当前版本及来源下，计算输出正向 ${counts.positive}、负向 ${counts.negative}、不确定 ${counts.uncertain}（按${$('windowMode').value==='grouped'?'合并表达':'窗口版本'}计数，不含别名和质量）。`+' 合并模式下同一表达仅一行，行内可切换已算好的回看窗口或每段长度（2／5 秒分别覆盖两段共 4／10 秒）；先选窗口再按 IC 筛选，不自动挑选表现最好的窗口。';
 }
 function matchesPositive(r){
  if($('signFilter').value==='all')return true;

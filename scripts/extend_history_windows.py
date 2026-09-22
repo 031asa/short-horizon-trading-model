@@ -182,7 +182,8 @@ def render():
     supported=default.groupby('factor').valid_days.max()
     lines=['# 可输入回看窗口说明','',
         '同一计算表达合并为一行。上方输入默认回看秒数，也可在该因子行内单独输入；按 Enter 或离开输入框应用。当前已完整计算 1–10 秒整数，不支持的小数或范围外数值会提示且保持原值，不做 IC 插值。','',
-        '**182 种计算表达，对应 1,271 个参数版本**；另外保留 6 个别名和 1,100 个质量版本。合并只改变展示，没有将不同窗口的 IC 平均到一起，也没有自动选最优窗口。','',
+        '分段比较表达也合并为单行：每段长度可输入已计算的 2／5 秒，分别比较相邻两段共 4／10 秒。包括 A08、C08、D03、R05 的分段变化及对应别名。普通回看输入独立于每段长度，固定差分滞后不归入此控件；完整展开仍保留全部原始版本。','',
+        '**175 种计算表达，对应 1,271 个参数版本**；另外保留 6 个别名和 1,100 个质量版本。合并只改变展示，没有将不同窗口的 IC 平均到一起，也没有自动选最优窗口。','',
         '## 参数边界','',
         '- 普通滚动窗口、均线内层窗口、其方向交互可输入 1–10 秒。每行名称、公式、IC、覆盖和详情同步指向实际窗口版本。',
         '- 前后两段仍各 2／5 秒；M04/M05 滞后仍 2 秒；M06 短长窗口仍 5／10 秒；M07–M09 外层仍 5 秒，只调整内层窗口。',
@@ -232,7 +233,7 @@ def publish():
     os.replace(WORK/'atomic.parquet',ROOT/'sample_snapshot_原子执行总表.parquet')
     meta['artifact_sha256']={p.name:sha(p) for p in OUT.iterdir() if p.is_file() and p.name!='experiment_manifest.json'}
     (OUT/'experiment_manifest.json').write_text(json.dumps(meta,ensure_ascii=False,indent=2),encoding='utf-8')
-    print('PUBLISHED: integer input 1..10; 182 expressions / 1271 versions; 9500 tasks',flush=True)
+    print('PUBLISHED: integer input 1..10; 175 expressions / 1271 versions; 9500 tasks',flush=True)
 
 
 if __name__=='__main__':

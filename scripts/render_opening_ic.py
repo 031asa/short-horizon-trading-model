@@ -113,7 +113,7 @@ def render_report(summary,registry,coverage,metadata,output):
         lines.insert(6,'新增 [有方向逻辑预期审阅](有方向逻辑预期审阅.md)：默认激进研究假设，可切回原始登记；旧表达及其 IC 均不变。')
     if metadata.get('window_extension'):
         lines=[line.replace('普通窗口 5／10 秒','普通窗口 1–10 秒整数').replace('普通历史 5／10 秒','普通历史 1–10 秒整数') for line in lines]
-        lines.insert(4,'当前 [回看窗口可输入](可输入回看窗口说明.md)：182 种计算表达合并展示，1–10 秒共保留 1,271 个计算版本；固定事件、滞后与短长参数另行标注。window_hypotheses.csv 是新增参数计算前的登记。')
+        lines.insert(4,'当前 [回看窗口可输入](可输入回看窗口说明.md)：175 种计算表达合并展示，1–10 秒共保留 1,271 个计算版本；固定事件、滞后与短长参数另行标注。window_hypotheses.csv 是新增参数计算前的登记。')
     (output/'IC研究结果.md').write_text('\n'.join(lines),encoding='utf-8')
     anomaly=['# 数据异常说明','', '## 行情缺失','', '整段无开盘行情并排除：'+ '、'.join(x['trade_date'] for x in metadata['excluded_openings'])+'。','']
     for g in metadata['opening_gaps']:anomaly.append(f"- {g['start']} → {g['end']}，间隔 {g['seconds']:g} 秒。检查范围延伸至开盘后 96 秒。")

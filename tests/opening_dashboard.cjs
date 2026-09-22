@@ -44,6 +44,28 @@ const path=require('path'),fs=require('fs'),assert=require('assert');
    await page.selectOption('#priorView','review');await page.fill('#search','');await page.selectOption('#family','all');
    await page.screenshot({path:path.join(dir,'网页验收_可输入窗口.png')});
  }
+ let segmentChecks=0;
+ for(const [family,name] of [['A08','OFIRateChange'],['C08','MomentumSpeedChange'],['D03','VolumeRateChange'],['D03','VolumeRateImbalance'],['R05','DepthChange'],['R05','RVChange'],['R05','QIVolumeAcceleration']]){
+   await page.click('[data-tab="computed"]');await page.selectOption('#family',family);await page.fill('#search',name);
+   assert.equal(await page.locator('#table tr[data-factor]').count(),1);
+   assert((await page.locator('#table').innerText()).includes('每段长度'));
+   for(const length of [2,5]){
+     await page.fill('#table .row-window',String(length));await page.locator('#table .row-window').press('Enter');
+     const factor=await page.locator('#table tr[data-factor]').getAttribute('data-factor');assert(factor.endsWith('_lag'+length+'s'));
+     const values=await page.locator('#table td[data-h]').allTextContents();
+     await page.selectOption('#windowMode','expanded');
+     assert.deepEqual(await page.locator('tr[data-factor="'+factor+'"] td[data-h]').allTextContents(),values);
+     await page.selectOption('#windowMode','grouped');segmentChecks++;
+   }
+   await page.fill('#windowDefault','3');await page.locator('#windowDefault').press('Enter');
+   assert.equal(await page.locator('#table .row-window').inputValue(),'5');
+   await page.fill('#table .row-window','3');await page.locator('#table .row-window').press('Enter');
+   assert.equal(await page.locator('#table .row-window').inputValue(),'5');assert((await page.locator('#windowMessage').innerText()).includes('未应用'));
+ }
+ await page.selectOption('#family','C08');await page.fill('#search','MomentumSpeedChange');
+ await page.screenshot({path:path.join(dir,'网页验收_分段合并.png')});
+ await page.fill('#windowDefault','5');await page.locator('#windowDefault').press('Enter');
+ await page.fill('#search','');await page.selectOption('#family','all');
  // Expanded mode still exposes every physical version for legacy probes and exports.
  await page.selectOption('#windowMode','expanded');await page.click('[data-tab="all"]');
  const probes=JSON.parse(fs.readFileSync(path.join(dir,'dashboard_qa_probes.json'),'utf8'));let verified=0;
@@ -146,6 +168,6 @@ const path=require('path'),fs=require('fs'),assert=require('assert');
    await page.screenshot({path:path.join(dir,'网页验收_逻辑预期审阅.png')});
  }
  assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
- const result={html_sha256:require('crypto').createHash('sha256').update(fs.readFileSync(path.join(dir,'全部因子IC与衰减.html'))).digest('hex'),offline_file_open:true,external_requests:requests.length,browser_errors:errors,sort_targets_verified:2*priorViews.length,formula_option_probes:probes.length,positive_filter_cases:filterCases.length,positive_filter_default_count:defaultCount,summary_cell_probes:verified,curve_points:titles.length,families:59,window_input_checks:windowInputChecks,review_origin_and_old_prior_view:reviewed?'passed':'not applicable',filters_detail_alias_quality_pagination:'passed'};
+ const result={html_sha256:require('crypto').createHash('sha256').update(fs.readFileSync(path.join(dir,'全部因子IC与衰减.html'))).digest('hex'),offline_file_open:true,external_requests:requests.length,browser_errors:errors,sort_targets_verified:2*priorViews.length,formula_option_probes:probes.length,positive_filter_cases:filterCases.length,positive_filter_default_count:defaultCount,summary_cell_probes:verified,curve_points:titles.length,families:59,window_input_checks:windowInputChecks,segment_parameter_checks:segmentChecks,review_origin_and_old_prior_view:reviewed?'passed':'not applicable',filters_detail_alias_quality_pagination:'passed'};
  fs.writeFileSync(path.join(dir,'dashboard_verification.json'),JSON.stringify(result,null,2));console.log(JSON.stringify(result));await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});
