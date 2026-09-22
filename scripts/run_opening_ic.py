@@ -25,6 +25,12 @@ from scripts.audit_opening_data import RAW, EXPECTED_SHA256, OUT
 CURRENT_ATOMIC = ROOT / "sample_snapshot_原子执行总表.parquet"
 
 
+def has_opening_data(frame, open_time):
+    """Exclude only an entirely absent opening, not a partly missing opening."""
+    return bool(((frame.Datetime >= open_time)
+                 & (frame.Datetime < open_time + pd.Timedelta(seconds=60))).any())
+
+
 def sha(path):
     with Path(path).open("rb") as stream:
         return hashlib.file_digest(stream,"sha256").hexdigest()
@@ -169,7 +175,8 @@ def build_report(summary,metadata,output):
            "- 日内信号时点等权，先逐日计算 Pearson/Spearman，再按有效交易日等权汇总；每组至少 20 对，常数列相关系数缺失。",
            f"- 普通样本和共同任务样本同时报告；共同样本要求该因子在全部 {len(observation_grid)} 种观察期、五个未来期限均可评价。",
            "", "## 数据与验证", "",
-           f"原始行情 {metadata['raw_rows']:,} 行、40 个交易日；上午开盘有行情的 38 日，另 2 日的任务保留并标记缺失。原子表 {metadata['atomic_rows']:,} 行。",
+           f"原始行情 {metadata['raw_rows']:,} 行、{len(metadata['raw_dates'])} 个交易日；纳入 {len(metadata['included_dates'])} 个上午开盘。整段开盘无行情的日期已从原子表及 IC 统计中剔除，另记排除清单。原子表 {metadata['atomic_rows']:,} 行。",
+           "排除日期："+"、".join(x['trade_date'] for x in metadata['excluded_openings'])+"。部分缺口不自动整日删除，异常及处理详见 `数据异常说明.md`。",
            f"开发期：{metadata['development_dates'][0]}—{metadata['development_dates'][-1]}；后续日期验证：{metadata['validation_dates'][0]}—{metadata['validation_dates'][-1]}。日期分界在查看本轮 IC 前固定。",
            "现有 40 日都曾参与旧项目探索，后续日期验证不能称为完全未见的新测试集；本轮没有因子优化或模型调参。",
            "", "## 因子与各期限的关系", "",
@@ -236,10 +243,24 @@ def run(cold_start=10.,observations=(1.,2.,3.,4.,5.),publish=False):
     contract=raw.Contract.dropna().unique()
     if len(contract)!=1:raise ValueError("Expected a single contract")
     parts=[]
+    excluded_openings=[]
+    included_dates=[]
+    gaps=[]
     for number,date in enumerate(dates,1):
         open_time=pd.Timestamp(f"{date} 09:30",tz="Asia/Shanghai")
-        parts.append(build_session_atomic(raw.loc[raw.trade_date.eq(date)],open_time,"AM",contract[0],config))
+        frame=raw.loc[raw.trade_date.eq(date)]
+        if not has_opening_data(frame,open_time):
+            excluded_openings.append(dict(trade_date=date,session="AM",reason="NO_FIRST_MINUTE_DATA"))
+            continue
+        included_dates.append(date)
+        opening=frame.loc[(frame.Datetime>=open_time) & (frame.Datetime<open_time+pd.Timedelta(seconds=60))]
+        stamps=opening.Datetime.reset_index(drop=True)
+        intervals=stamps.diff().dt.total_seconds()
+        for i in np.flatnonzero(intervals.gt(config.maximum_gap_seconds).to_numpy()):
+            gaps.append(dict(trade_date=date,start=str(stamps.iloc[i-1]),end=str(stamps.iloc[i]),seconds=float(intervals.iloc[i])))
+        parts.append(build_session_atomic(frame,open_time,"AM",contract[0],config))
         if number%10==0:print(f"Built {number}/{len(dates)} dates",flush=True)
+    if not parts:raise ValueError("No opening data; no existing result was replaced")
     atomic=pd.concat(parts,ignore_index=True)
     keys=["trade_date","session","task_time","observation_seconds"]
     assert not atomic.duplicated(keys).any()
@@ -249,7 +270,7 @@ def run(cold_start=10.,observations=(1.,2.,3.,4.,5.),publish=False):
     assert np.isfinite(atomic[registry.factor].to_numpy(float)).sum()>0
     # All versions of one decision instant must have identical factor values.
     assert atomic.groupby(["trade_date","session","decision_time"])[registry.factor.tolist()].nunique(dropna=False).le(1).all().all()
-    checks=verify_actual_rows(atomic,raw,config,dates)
+    checks=verify_actual_rows(atomic,raw,config,included_dates)
     print("Verified causal prefixes and independent future-price selections",checks,flush=True)
     OUT.mkdir(parents=True,exist_ok=True)
     daily=daily_evaluation(atomic,registry,config)
@@ -261,6 +282,9 @@ def run(cold_start=10.,observations=(1.,2.,3.,4.,5.),publish=False):
     source_files=["utils/opening_ic.py","utils/opening_schedule.py","scripts/run_opening_ic.py","scripts/audit_opening_data.py"]
     metadata=dict(rules_version=RULES_VERSION,table_role="task_feature_label",config=config.to_dict(),
         raw_sha256=EXPECTED_SHA256,raw_rows=len(raw),atomic_rows=len(atomic),
+        raw_dates=dates,included_dates=included_dates,excluded_openings=excluded_openings,
+        missing_opening_policy="exclude_from_atomic_and_ic_keep_audit",opening_gaps=gaps,
+        feature_status_counts=atomic.feature_status.value_counts().to_dict(),
         development_dates=development_dates,validation_dates=validation_dates,
         feature_columns=registry.factor.tolist(),source_sha256={name:sha(ROOT/name) for name in source_files},
         verification=checks,ic_daily_rows=len(daily),time_range_policy="first_minute_tasks_followup_allowed",
@@ -281,6 +305,17 @@ def run(cold_start=10.,observations=(1.,2.,3.,4.,5.),publish=False):
     metadata["atomic_sha256"]=sha(candidate)
     metadata["published"]=False
     top=build_report(summary,metadata,OUT)
+    pd.DataFrame(excluded_openings,columns=["trade_date","session","reason"]).to_csv(OUT/"excluded_openings.csv",index=False,encoding="utf-8-sig")
+    quality=["# 数据异常说明", "", "整段开盘无行情的日期从原子表和 IC 中排除，仅保留审计记录。", "",
+             "排除日期："+"、".join(x['trade_date'] for x in excluded_openings), "",
+             "## 首分钟超过允许间隔的缺口", ""]
+    quality += [f"- {g['start']} → {g['end']}，间隔 {g['seconds']:g} 秒。" for g in gaps] or ["未发现。"]
+    quality += ["", "这些部分缺口不自动整日删除：对应历史片段重置，跨缺口标签记缺失，当前源过旧的任务保留状态、不填零。", "",
+                "当前源状态："+json.dumps(metadata['feature_status_counts'],ensure_ascii=False), "",
+                "覆盖率分母现在只含纳入的开盘日期，日期开发/验证分界保持原样。", "",
+                "口径提醒：不同观察期可能对应同一信号时刻，不能合并当独立样本；任务前历史仍可用于 5/10 秒滚动特征。", "",
+                "后续如出现整段缺失、时间逆序、过长缺口或指纹不符，应披露具体日期、影响和处理，不静默修补。"]
+    (OUT/"数据异常说明.md").write_text("\n".join(quality)+"\n",encoding="utf-8")
     metadata["display_ranking_development_only"]=top
     if publish:
         os.replace(candidate,CURRENT_ATOMIC)

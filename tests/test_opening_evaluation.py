@@ -4,13 +4,20 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from scripts.run_opening_ic import daily_evaluation, summarize_daily
+from scripts.run_opening_ic import daily_evaluation, summarize_daily, has_opening_data
 from utils.opening_ic import ICConfig
 import numpy as np
 import pandas as pd
 
 
 class EvaluationTests(unittest.TestCase):
+    def test_exclude_entirely_missing_opening_but_keep_partial_opening(self):
+        start=pd.Timestamp("2026-07-20 09:30",tz="Asia/Shanghai")
+        frame=pd.DataFrame({"Datetime":[start-pd.Timedelta(seconds=1),start+pd.Timedelta(seconds=60)]})
+        self.assertFalse(has_opening_data(frame,start))
+        frame.loc[2]=start+pd.Timedelta(seconds=56)
+        self.assertTrue(has_opening_data(frame,start))
+
     def test_shared_tasks_exclude_missing_factor_or_any_horizon_without_dropping_real_zero(self):
         rows=[]
         for observation in range(1,6):
