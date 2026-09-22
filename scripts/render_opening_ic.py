@@ -28,7 +28,7 @@ def dashboard_payload(summary,registry,coverage,metadata):
     registry_records=coverage.fillna('').to_dict('records')
     for r in registry_records:r['status_counts']=json.loads(r['status_counts'])
     info=dict(families=FAMILIES,registry=registry_records,factors=names,metrics=METRICS,combos=combos,horizons=horizons,
-        meta={k:metadata[k] for k in ('atomic_rows','included_dates','excluded_openings','opening_gaps','computed_outputs','alias_outputs','quality_outputs','registry_outputs','prior_version')})
+        meta={k:metadata[k] for k in ('atomic_rows','included_dates','excluded_openings','opening_gaps','computed_outputs','alias_outputs','quality_outputs','registry_outputs','prior_version','config')})
     packed=gzip.compress(arrays.tobytes(order='C'),compresslevel=9,mtime=0)
     # Verify the exact embedded payload, including every row/metric, before rendering.
     np.testing.assert_array_equal(np.frombuffer(gzip.decompress(packed),dtype='<f4').reshape(arrays.shape),arrays)
@@ -49,7 +49,7 @@ def render_report(summary,registry,coverage,metadata,output):
 
     lines=['# 全量因子 IC 与 30 秒衰减分析','',
         f"原子表：**{len(metadata['included_dates'])} 日 × 50 个任务 × 5 个观察期 = {metadata['atomic_rows']:,} 行**。59 个家族展开为 {len(registry)} 个输出：{metadata['computed_outputs']} 个计算输出、{metadata['alias_outputs']} 个别名、{metadata['quality_outputs']} 个质量字段。",'',
-        '直接打开 [全部因子 IC 与衰减网页](全部因子IC与衰减.html)。所有家族按编号展示；别名复用其目标的 IC，质量字段进入质量清单，不独立计算方向 IC。','',
+        '直接打开 [全部因子 IC 与衰减网页](全部因子IC与衰减.html)。因子按当前目标的逻辑预期正向、负向、不确定、不适用分组，组内按家族编号展示；别名复用其目标的 IC，质量字段进入质量清单，不独立计算方向 IC。','',
         '## 数据与样本','',
         '- 全部 38 个有效上午开盘纳入，无开发／验证划分。phase 统一为 all_sample；逐日计算 Pearson / Spearman，再对有效日期等权汇总。没有把全部快照合并成一个相关系数。',
         '- 第 10–59 秒每秒产生任务，观察 1／2／3／4／5 秒。特征回看包含任务前历史；普通窗口 5／10 秒。相同观察结束时刻的特征完全相同。',

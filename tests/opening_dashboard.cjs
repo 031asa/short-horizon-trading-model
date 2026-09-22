@@ -17,6 +17,16 @@ const path=require('path'),fs=require('fs'),assert=require('assert');
    await page.selectOption('#target',probe.target);await page.selectOption('#pairs',probe.pair_set);
    await page.selectOption('#kind',probe.label_type);await page.selectOption('#method',probe.method);
    await page.fill('#search',probe.factor);
+   const formula=await page.locator('#icFormula').innerText();
+   assert(formula.includes(probe.method==='ic'?'Pearson IC':'Spearman Rank IC'));
+   assert.equal(formula.includes('Rank(X'),probe.method==='rank_ic');
+   assert.equal(formula.includes('(u−1)'),probe.label_type==='incremental');
+   assert(formula.includes(probe.target==='absolute'?'绝对':'有方向'));
+   assert(formula.includes('+ '+probe.observation_seconds+'s'));
+   assert(formula.includes(probe.anchor==='arrival'?'观察结束后第 2 张快照':'a = t_dec'));
+   assert(formula.includes(probe.pair_set==='own'?'同时有效的任务':'全部 30 个期限均有效的共同任务'));
+   assert(formula.includes('日期等权，不按配对数加权'));
+
    const row=page.locator('tr[data-factor="'+probe.factor+'"]');
    const cell=row.locator('td[data-h="'+probe.horizon_seconds+'"]');
    const shown=await cell.innerText();assert.equal(shown,probe.display,JSON.stringify(probe));
@@ -37,6 +47,22 @@ const path=require('path'),fs=require('fs'),assert=require('assert');
  await page.selectOption('#family','all');await page.click('[data-tab="families"]');assert.equal(await page.locator('#table tbody tr').count(),59);
  await page.click('[data-family="R05"]');await page.click('[data-tab="alias"]');assert.equal(await page.locator('#table tbody tr').count(),6);
  await page.click('[data-tab="all"]');await page.selectOption('#family','all');assert((await page.locator('#count').innerText()).includes('个输出'));await page.click('#next');assert((await page.locator('#page').innerText()).startsWith('2 /'));
+ // Check the complete cross-page ordering for both evaluation targets.
+ const registry=await page.locator('#info').evaluate(e=>JSON.parse(e.textContent).registry);
+ const families=await page.locator('#info').evaluate(e=>Object.keys(JSON.parse(e.textContent).families));
+ await page.click('[data-tab="all"]');await page.selectOption('#family','all');await page.selectOption('#history','all');await page.fill('#search','');await page.selectOption('#signFilter','all');
+ for(const target of ['signed','absolute']){
+   await page.selectOption('#target',target);
+   const actual=[];
+   for(;;){actual.push(...await page.locator('#table tr[data-factor]').evaluateAll(rows=>rows.map(r=>r.dataset.factor)));if(await page.locator('#next').isDisabled())break;await page.click('#next')}
+   assert.equal(actual.length,registry.length);
+   const byName=new Map(registry.map(r=>[r.factor,r]));const order={positive:0,negative:1,uncertain:2,not_applicable:3};
+   for(let i=1;i<actual.length;i++){
+     const a=byName.get(actual[i-1]),b=byName.get(actual[i]),pa=order[a['expected_sign_'+target]],pb=order[b['expected_sign_'+target]];
+     assert(pa<=pb,'Logical prior groups out of order');
+     if(pa===pb)assert(families.indexOf(a.family_id)<=families.indexOf(b.family_id),'Family order changed inside logical prior group');
+   }
+ }
  // Compare the new positive-prior/green-IC filter with full-precision summary selections.
  const filterCases=JSON.parse(fs.readFileSync(path.join(dir,'positive_filter_expected.json'),'utf8'));
  await page.selectOption('#family','all');await page.selectOption('#history','all');await page.fill('#search','');
@@ -56,6 +82,6 @@ const path=require('path'),fs=require('fs'),assert=require('assert');
  assert.equal(await page.locator('#signFilter').inputValue(),'positive_green');
  assert((await page.locator('#count').innerText()).startsWith('31 '));
  assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
- const result={html_sha256:require('crypto').createHash('sha256').update(fs.readFileSync(path.join(dir,'全部因子IC与衰减.html'))).digest('hex'),offline_file_open:true,external_requests:requests.length,browser_errors:errors,positive_filter_cases:filterCases.length,positive_filter_default_count:31,summary_cell_probes:verified,curve_points:titles.length,families:59,filters_detail_alias_quality_pagination:'passed'};
+ const result={html_sha256:require('crypto').createHash('sha256').update(fs.readFileSync(path.join(dir,'全部因子IC与衰减.html'))).digest('hex'),offline_file_open:true,external_requests:requests.length,browser_errors:errors,sort_targets_verified:2,formula_option_probes:probes.length,positive_filter_cases:filterCases.length,positive_filter_default_count:31,summary_cell_probes:verified,curve_points:titles.length,families:59,filters_detail_alias_quality_pagination:'passed'};
  fs.writeFileSync(path.join(dir,'dashboard_verification.json'),JSON.stringify(result,null,2));console.log(JSON.stringify(result));await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});
