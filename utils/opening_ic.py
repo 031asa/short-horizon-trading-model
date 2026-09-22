@@ -11,14 +11,14 @@ import pandas as pd
 
 from .opening_schedule import ScheduleConfig, build_task_schedule
 
-RULES_VERSION = "opening-task-observation-ic-v1"
+RULES_VERSION = "opening-task-observation-ic-full-v2"
 
 
 @dataclass(frozen=True)
 class ICConfig:
     schedule: ScheduleConfig = field(default_factory=ScheduleConfig)
     history_seconds: tuple[int, ...] = (5, 10)
-    horizons_seconds: tuple[int, ...] = (1, 2, 3, 4, 5)
+    horizons_seconds: tuple[int, ...] = tuple(range(1,31))
     tick_size: float = .2
     minimum_coverage: float = .8
     maximum_gap_seconds: float = 1.0
@@ -46,7 +46,7 @@ class ICConfig:
         return asdict(self)
 
 
-def feature_registry(config: ICConfig) -> pd.DataFrame:
+def base_feature_registry(config: ICConfig) -> pd.DataFrame:
     rows = []
     current = [
         ("F01_QI", "QueueImbalance", "direction", "ratio", "queue"),
@@ -80,6 +80,11 @@ def feature_registry(config: ICConfig) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def feature_registry(config: ICConfig) -> pd.DataFrame:
+    from .factor_catalog import full_registry
+    return full_registry(config)
+
+
 def limit_fill_evidence(direction: int, limit: float, last: float,
                         bid: float, ask: float, delta_volume: float) -> tuple[bool, str]:
     """User-confirmed evidence rule; both triggers settle at limit, not quote.
@@ -100,6 +105,8 @@ def limit_fill_evidence(direction: int, limit: float, last: float,
 class SessionData:
     def __init__(self, frame: pd.DataFrame, open_time: pd.Timestamp, config: ICConfig):
         self.config = config
+        self._base_names = base_feature_registry(config).factor.tolist()
+        self._extended = None
         self.open_time = pd.Timestamp(open_time)
         frame = frame.copy()
         if "source_row" not in frame:
@@ -182,9 +189,9 @@ class SessionData:
         coverage = self.times[index] - self.times[start]
         return start, coverage, np.diff(self.times[start:index+1])
 
-    def features(self, decision_seconds: float) -> dict:
+    def _base_features(self, decision_seconds: float) -> dict:
         config = self.config
-        result = {name: np.nan for name in feature_registry(config).factor}
+        result = {name: np.nan for name in self._base_names}
         index = self.source_index(decision_seconds)
         result.update(feature_time=pd.NaT, feature_source_age_seconds=np.nan,
                       feature_status="NO_SOURCE", decision_lastprice=np.nan)
@@ -256,6 +263,21 @@ class SessionData:
                     result["F08_SignedVolume"+suffix] = np.dot(np.sign(np.diff(self.p[start:index+1])), volume)/total
         return result
 
+    def features(self, decision_seconds: float) -> dict:
+        from .opening_features import FeatureEngine
+        if self._extended is None:
+            self._extended = FeatureEngine(self)
+        index = self.source_index(decision_seconds)
+        if index < 0 or decision_seconds-self.times[index] > self.config.maximum_source_age_seconds+1e-10:
+            out = self._base_features(decision_seconds)
+            for item in self._extended.catalog:
+                out[item['factor']] = np.nan
+                out[item['factor']+'__status'] = out['feature_status']
+            return out
+        out = {k:v for k,v in self._extended.at(index).items() if not k.startswith('_')}
+        out['feature_source_age_seconds'] = decision_seconds-self.times[index]
+        return out
+
     def labels(self, decision_seconds: float) -> dict:
         config = self.config
         current = self.source_index(decision_seconds)
@@ -277,7 +299,8 @@ class SessionData:
             origin = current if anchor == "decision" else arrival
             valid_origin = source_ok if anchor == "decision" else arrival_ok
             start = decision_seconds if anchor == "decision" else (self.times[arrival] if arrival_ok else np.nan)
-            for u in config.horizons_seconds:
+            needed = sorted(set(config.horizons_seconds) | {u-1 for u in config.horizons_seconds if u>1})
+            for u in needed:
                 key = f"y_{anchor}_{u}s"
                 result.update({key: np.nan, key+"_status": "INVALID_ORIGIN",
                                key+"_end_time": pd.NaT, key+"_actual_seconds": np.nan,
@@ -298,6 +321,13 @@ class SessionData:
                     result.update({key: self.p[end]-self.p[origin], key+"_status": "ok",
                                    key+"_end_time": self.frame.Datetime.iloc[end],
                                    key+"_actual_seconds": self.times[end]-start})
+            for u in config.horizons_seconds:
+                key=f"y_{anchor}_{u}s"
+                inc=f"y_{anchor}_incremental_{u}s"
+                previous=f"y_{anchor}_{u-1}s"
+                ok=result[key+"_status"]=="ok" and (u==1 or result[previous+"_status"]=="ok")
+                result[inc]=result[key]-(0 if u==1 else result[previous]) if ok else np.nan
+                result[inc+"_status"]="ok" if ok else (result[key+"_status"] if result[key+"_status"]!="ok" else "INVALID_PREVIOUS_ENDPOINT")
         return result
 
 
