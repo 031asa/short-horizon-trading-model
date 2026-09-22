@@ -86,6 +86,10 @@ def render_report(summary,registry,coverage,metadata,output):
         '- experiment_manifest.json：参数、原始数据／源码／产物指纹、发布时间状态与验收记录。',
         '- 网页只嵌入汇总和因子覆盖，无外部资源或服务。浏览器内数值以 float32 存储；完整数据保持原精度。每个嵌入汇总值已验证误差 ≤1e-6 + 1e-6×绝对值。',
         '- 原始行情与 PDF 保持不变；PDF 为公式来源，当前批准的实验计划优先于文档中的旧时间范围。ETF 五档导入与真正筛选留待后续。','']
+    if 'review_origin' in registry:
+        lines=[line.replace('逻辑预期在新增 IC 前登记于 factor_hypotheses.csv。此前已看过部分期货结果，因此标为研究假设；后续 ETF 研究前可冻结为其事前假设。后续补充的质量诊断字段仅登记在 feature_registry.csv，全部为不适用；已计算因子的预期与原始登记逐项一致。',
+            '原始假设保留在 factor_hypotheses.csv；用户批准的激进机制审阅另存 directional_hypotheses.csv，含旧预期、主机制、条件与竞争机制。原有 96 个不确定输出升级假设，28 个新增表达在本次重测前冻结。已看过该批期货结果，不能称期货事前假设。') for line in lines]
+        lines.insert(6,'新增 [有方向逻辑预期审阅](有方向逻辑预期审阅.md)：默认激进研究假设，可切回原始登记；旧表达及其 IC 均不变。')
     (output/'IC研究结果.md').write_text('\n'.join(lines),encoding='utf-8')
     anomaly=['# 数据异常说明','', '## 行情缺失','', '整段无开盘行情并排除：'+ '、'.join(x['trade_date'] for x in metadata['excluded_openings'])+'。','']
     for g in metadata['opening_gaps']:anomaly.append(f"- {g['start']} → {g['end']}，间隔 {g['seconds']:g} 秒。检查范围延伸至开盘后 96 秒。")

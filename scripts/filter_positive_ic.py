@@ -4,11 +4,14 @@ import sys,json
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT));sys.path.insert(0,str(ROOT/'.cache/python-packages'))
 import pandas as pd
+from utils.factor_catalog import FAMILIES
 
 def filter_positive(output):
     output=Path(output);registry=pd.read_csv(output/'feature_registry.csv');s=pd.read_parquet(output/'summary_ic.parquet')
     base=s.loc[s.phase.eq('all_sample')&s.observation_seconds.eq(1)&s.anchor.eq('decision')&s.label_type.eq('cumulative')&s.pair_set.eq('own')]
-    candidates=registry.loc[registry.evaluate]
+    candidates=registry.loc[registry.evaluate].copy()
+    candidates['family_order']=candidates.family_id.map({f:i for i,f in enumerate(FAMILIES)})
+    candidates=candidates.sort_values(['family_order','history_seconds','factor'])
     selected=base.loc[base.target.eq('signed')&base.factor.isin(candidates.loc[candidates.expected_sign_signed.eq('positive'),'factor'])]
     green=selected.loc[selected.mean_rank_ic.gt(0)]
     def ranges(values):
@@ -28,11 +31,12 @@ def filter_positive(output):
         rows.append(dict(family_id=r.family_id,factor=r.factor,name_zh=r.name_zh,history_seconds=r.history_seconds,
             positive_horizons=ranges(g.horizon_seconds),positive_horizon_count=len(g),all_30_positive=len(g)==30,
             observation_seconds=1,anchor='decision',label_type='cumulative',target='signed',pair_set='own',method='Spearman',
+            prior_version=r.prior_version,review_origin=getattr(r,'review_origin','original'),
             **{f'IC_{u}s':full.loc[u,'mean_rank_ic'] for u in range(1,31)}))
     result=pd.DataFrame(rows);result.to_csv(output/'逻辑正向且绿色IC_筛选清单.csv',index=False,encoding='utf-8-sig')
     lines=['# 逻辑正向且绿色 IC 筛选','',
         '固定查看口径：全部 38 日；观察 1 秒；观察结束基准；有方向累计 LastPrice 价变；逐期限有效样本；Spearman Rank IC。',
-        '筛选条件：原登记逻辑预期 positive，且平均日 Rank IC > 0。未重算 IC，未改写逻辑预期；别名不重复计入。',
+        '筛选条件：当前登记版本的逻辑预期 positive，且平均日 Rank IC > 0。审阅版导出采用激进研究假设；网页可切回原始登记。IC 保留原值；别名不重复计入。',
         f'共 {len(result)} 个因子至少一期为正，其中 {int(result.all_30_positive.sum())} 个全部 30 期为正。一个绿色期限不代表整条曲线为正；本表仅按所选条件展示。','',
         '[打开筛选网页](全部因子IC与衰减.html#positive) · [完整筛选清单 CSV](逻辑正向且绿色IC_筛选清单.csv)','',
         '| 因子 | 定义 | 历史窗口 | 绿色期限（秒） | 绿色期数 |','|---|---|---|---|---:|']
@@ -40,16 +44,19 @@ def filter_positive(output):
     lines+=['','CSV 保留全部 30 期限的原始 IC，包括筛入因子的负 IC；网页可改为全部期限或指定期限筛选。绿色仅指正相关，不表示显著性或收益保证。','']
     (output/'逻辑正向且绿色IC_筛选说明.md').write_text('\n'.join(lines),encoding='utf-8')
     cases=[]
-    for target in ('signed','absolute'):
-        names=candidates.loc[candidates['expected_sign_'+target].eq('positive'),'factor']
-        grid=base.loc[base.target.eq(target)&base.factor.isin(names)]
-        for method in ('ic','rank_ic'):
-            for scope in ('any','all','1','5','30'):
-                g=grid.loc[grid['mean_'+method].gt(0)]
-                if scope=='any':matched=set(g.factor)
-                elif scope=='all':matched=set(g.groupby('factor').size().loc[lambda x:x.eq(30)].index)
-                else:matched=set(g.loc[g.horizon_seconds.eq(int(scope)),'factor'])
-                cases.append(dict(target=target,method=method,scope=scope,factors=candidates.loc[candidates.factor.isin(matched),'factor'].tolist()))
+    for view in (('review','original') if 'review_origin' in candidates else ('original',)):
+        viewed=candidates if view=='review' or 'review_origin' not in candidates else candidates.loc[candidates.review_origin.eq('original')]
+        for target in ('signed','absolute'):
+            key=('original_' if view=='original' and 'review_origin' in candidates else '')+'expected_sign_'+target
+            names=viewed.loc[viewed[key].eq('positive'),'factor']
+            grid=base.loc[base.target.eq(target)&base.factor.isin(names)]
+            for method in ('ic','rank_ic'):
+                for scope in ('any','all','1','5','30'):
+                    g=grid.loc[grid['mean_'+method].gt(0)]
+                    if scope=='any':matched=set(g.factor)
+                    elif scope=='all':matched=set(g.groupby('factor').size().loc[lambda x:x.eq(30)].index)
+                    else:matched=set(g.loc[g.horizon_seconds.eq(int(scope)),'factor'])
+                    cases.append(dict(view=view,target=target,method=method,scope=scope,factors=viewed.loc[viewed.factor.isin(matched),'factor'].tolist()))
     (output/'positive_filter_expected.json').write_text(json.dumps(cases,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps({'any_positive':len(result),'all_30_positive':int(result.all_30_positive.sum()),'all_positive_factors':result.loc[result.all_30_positive,'factor'].tolist()},ensure_ascii=False))
     return result

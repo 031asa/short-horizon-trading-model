@@ -18,7 +18,14 @@ def verify(folder):
     assert set(r.loc[r.evaluate,'factor'])==set(s.factor)
     for row in r.loc[r.kind.eq('alias')].itertuples():np.testing.assert_allclose(a[row.factor],a[row.alias_of],equal_nan=True)
     p=pd.read_csv(out/'factor_hypotheses.csv');cols=['factor','expected_sign_signed','expected_sign_absolute','prior_version']
-    pd.testing.assert_frame_equal(p.loc[p.evaluate,cols].reset_index(drop=True),r.loc[r.evaluate,cols].reset_index(drop=True))
+    if 'review_origin' in r:
+        original=r.loc[r.evaluate & r.review_origin.eq('original')].copy()
+        for col in cols[1:]:original[col]=original['original_'+col]
+        pd.testing.assert_frame_equal(p.loc[p.evaluate,cols].reset_index(drop=True),original[cols].reset_index(drop=True))
+        frozen=pd.read_csv(out/'directional_hypotheses.csv')
+        pd.testing.assert_frame_equal(frozen,r)
+    else:
+        pd.testing.assert_frame_equal(p.loc[p.evaluate,cols].reset_index(drop=True),r.loc[r.evaluate,cols].reset_index(drop=True))
     checks=0
     for anchor in ('decision','arrival'):
         cumulative=a[[f'y_{anchor}_{u}s' for u in range(1,31)]].to_numpy()
@@ -65,7 +72,8 @@ def verify(folder):
     result=dict(atomic_sha256=sha(out/'atomic.parquet' if (out/'atomic.parquet').exists() else ROOT/'sample_snapshot_原子执行总表.parquet'),summary_sha256=sha(out/'summary_ic.parquet'),atomic_rows=len(a),dates=a.trade_date.nunique(),families=r.family_id.nunique(),computed_outputs=int(r.evaluate.sum()),registry_outputs=len(r),
         phase='all_sample',incremental_validity_cells_checked=checks,independent_actual_day_pairs=comparisons,
         independent_summary_statistics=aggregate_comparisons,aliases_checked=int(r.kind.eq('alias').sum()),r06_window_identities='passed',
-        b09_max_valid_days=int(b09.valid_days.max()),prior_signs_unchanged=True)
+        b09_max_valid_days=int(b09.valid_days.max()),original_prior_record_preserved=True,
+        reviewed_prior_matches_freeze='review_origin' in r)
     (out/'acceptance_verification.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(result,ensure_ascii=False,indent=2))
     return result

@@ -51,14 +51,18 @@ const path=require('path'),fs=require('fs'),assert=require('assert');
  const registry=await page.locator('#info').evaluate(e=>JSON.parse(e.textContent).registry);
  const families=await page.locator('#info').evaluate(e=>Object.keys(JSON.parse(e.textContent).families));
  await page.click('[data-tab="all"]');await page.selectOption('#family','all');await page.selectOption('#history','all');await page.fill('#search','');await page.selectOption('#signFilter','all');
- for(const target of ['signed','absolute']){
+ const reviewed=registry.some(r=>r.review_version);
+ const priorViews=reviewed?['review','original']:['original'];
+ for(const view of priorViews)for(const target of ['signed','absolute']){
+   if(reviewed)await page.selectOption('#priorView',view);
    await page.selectOption('#target',target);
    const actual=[];
    for(;;){actual.push(...await page.locator('#table tr[data-factor]').evaluateAll(rows=>rows.map(r=>r.dataset.factor)));if(await page.locator('#next').isDisabled())break;await page.click('#next')}
-   assert.equal(actual.length,registry.length);
+   assert.equal(actual.length,registry.filter(r=>view!=='original'||r.review_origin!=='derived').length);
    const byName=new Map(registry.map(r=>[r.factor,r]));const order={positive:0,negative:1,uncertain:2,not_applicable:3};
    for(let i=1;i<actual.length;i++){
-     const a=byName.get(actual[i-1]),b=byName.get(actual[i]),pa=order[a['expected_sign_'+target]],pb=order[b['expected_sign_'+target]];
+     const key=(view==='original'&&reviewed?'original_':'')+'expected_sign_'+target;
+     const a=byName.get(actual[i-1]),b=byName.get(actual[i]),pa=order[a[key]],pb=order[b[key]];
      assert(pa<=pb,'Logical prior groups out of order');
      if(pa===pb)assert(families.indexOf(a.family_id)<=families.indexOf(b.family_id),'Family order changed inside logical prior group');
    }
@@ -69,19 +73,43 @@ const path=require('path'),fs=require('fs'),assert=require('assert');
  await page.selectOption('#obs','1');await page.selectOption('#anchor','decision');await page.selectOption('#pairs','own');await page.selectOption('#kind','cumulative');await page.click('[data-tab="computed"]');
  await page.selectOption('#signFilter','positive_green');
  for(const test of filterCases){
+   if(reviewed)await page.selectOption('#priorView',test.view);
    await page.selectOption('#target',test.target);await page.selectOption('#method',test.method);await page.selectOption('#greenH',test.scope);
    const actual=[];
    for(;;){actual.push(...await page.locator('#table tr[data-factor]').evaluateAll(rows=>rows.map(r=>r.dataset.factor)));if(await page.locator('#next').isDisabled())break;await page.click('#next')}
    assert.deepEqual(actual,test.factors,JSON.stringify(test));
  }
+ if(reviewed)await page.selectOption('#priorView','review');
  await page.selectOption('#target','signed');await page.selectOption('#method','rank_ic');await page.selectOption('#greenH','any');
- assert((await page.locator('#count').innerText()).startsWith('31 '));
+ const defaultCount=filterCases.find(x=>x.view===(reviewed?'review':'original')&&x.target==='signed'&&x.method==='rank_ic'&&x.scope==='any').factors.length;
+ assert((await page.locator('#count').innerText()).startsWith(defaultCount+' '));
  await page.screenshot({path:path.join(dir,'网页验收_正向绿色筛选.png')});
  await page.selectOption('#signFilter','all');
  await page.goto(require('url').pathToFileURL(path.join(dir,'全部因子IC与衰减.html')).href+'#positive');
  assert.equal(await page.locator('#signFilter').inputValue(),'positive_green');
- assert((await page.locator('#count').innerText()).startsWith('31 '));
+ assert((await page.locator('#count').innerText()).startsWith(defaultCount+' '));
+ if(reviewed){
+   await page.selectOption('#signFilter','all');await page.selectOption('#origin','derived');
+   assert((await page.locator('#count').innerText()).startsWith('28 '));
+   await page.fill('#search','M01_CounterflowDeviation_h5s');
+   const newRow=page.locator('tr[data-factor="M01_CounterflowDeviation_h5s"]');
+   assert.equal(await newRow.locator('.pin3').innerText(),'负向');await newRow.click();
+   assert((await page.locator('#detail').innerText()).includes('父因子'));
+   assert((await page.locator('#detail').innerText()).includes('相反机制'));
+   await page.selectOption('#origin','original');await page.fill('#search','M01_MADeviation_h5s');
+   const originalRow=page.locator('tr[data-factor="M01_MADeviation_h5s"]');
+   const oldIC=await originalRow.locator('[data-h="1"]').innerText();
+   assert.equal(await originalRow.locator('.pin3').innerText(),'负向');
+   await page.selectOption('#priorView','original');
+   assert.equal(await originalRow.locator('.pin3').innerText(),'不确定');
+   assert.equal(await originalRow.locator('[data-h="1"]').innerText(),oldIC);
+   assert((await page.locator('#reviewNote').innerText()).includes('不确定 221'));
+   await page.selectOption('#priorView','review');await page.selectOption('#origin','all');
+   assert((await page.locator('#reviewNote').innerText()).includes('不确定 125'));
+   await page.fill('#search','');await page.selectOption('#family','M01');
+   await page.screenshot({path:path.join(dir,'网页验收_逻辑预期审阅.png')});
+ }
  assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
- const result={html_sha256:require('crypto').createHash('sha256').update(fs.readFileSync(path.join(dir,'全部因子IC与衰减.html'))).digest('hex'),offline_file_open:true,external_requests:requests.length,browser_errors:errors,sort_targets_verified:2,formula_option_probes:probes.length,positive_filter_cases:filterCases.length,positive_filter_default_count:31,summary_cell_probes:verified,curve_points:titles.length,families:59,filters_detail_alias_quality_pagination:'passed'};
+ const result={html_sha256:require('crypto').createHash('sha256').update(fs.readFileSync(path.join(dir,'全部因子IC与衰减.html'))).digest('hex'),offline_file_open:true,external_requests:requests.length,browser_errors:errors,sort_targets_verified:2*priorViews.length,formula_option_probes:probes.length,positive_filter_cases:filterCases.length,positive_filter_default_count:defaultCount,summary_cell_probes:verified,curve_points:titles.length,families:59,review_origin_and_old_prior_view:reviewed?'passed':'not applicable',filters_detail_alias_quality_pagination:'passed'};
  fs.writeFileSync(path.join(dir,'dashboard_verification.json'),JSON.stringify(result,null,2));console.log(JSON.stringify(result));await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});

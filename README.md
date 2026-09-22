@@ -27,13 +27,13 @@
 
 ```powershell
 $projectPython = 'C:/Users/Hello/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
-& $projectPython -X utf8 -m unittest discover -s tests -p 'test_opening*.py' -v
+& $projectPython -X utf8 scripts/test_opening.py result/opening_execution/.review_pending
 & $projectPython -X utf8 scripts/run_opening_ic.py --cold-start 10 --observations 1 2 3 4 5 --publish
 ```
 
 其他机器在安装 `environment.yml` 中的依赖后，可用对应 Python 运行相同入口。移除 `--publish` 可生成候选表和结果而不替换当前原子表。参数来源写入 `experiment_manifest.json`，不要混合不同次运行的文件。
 
-Notebook 入口为 `行情转原子执行表.ipynb`，调用同一套代码，不再维护独立的旧撮合函数。
+Notebook 入口为 `行情转原子执行表.ipynb`，调用同一套基础实验代码，不再维护独立的旧撮合函数。上面的研究运行入口重建 PDF 基础实验；最新的方向机制审阅还需执行下述审阅步骤。
 
 ## 输入、输出与历史边界
 
@@ -65,3 +65,26 @@ IC 不是预测正确率或交易收益。重叠标签、同一时刻的重复�
 网页“预期与 IC”可筛选逻辑正向且原始平均日 IC > 0，期限可选择任一期、全部 30 期或指定秒数。`全部因子IC与衰减.html#positive` 直接进入计算因子的正向绿色筛选；默认研究口径下为 31 个至少一期为正、4 个全部期限为正。筛选随当前观察期、目标、样本、时间基准、响应及相关系数同步变化；完整曲线保留原符号。`逻辑正向且绿色IC_筛选清单.csv` 为默认口径导出。
 
 看板排列更新：按当前评价目标的逻辑预期“正向 → 负向 → 不确定 → 不适用”分组，组内保持 F／A／B／C／D／M／R 家族编号顺序。筛选区下方显示随选项变化的 IC 公式，包含观察时点、累计／新增与有方向／绝对标签、配对或共同样本、Pearson／Spearman 及日期等权汇总；质量视图说明不计算 IC。
+
+## 2026-09-22 方向机制审阅（当前展示版本）
+
+用户授权更激进地明确方向假设，并在需要时修改表达后重测。原有 275 个计算输出中，96 个“不确定”升级为明确研究假设：正向 104、负向 46、不确定 125；另新增 28 个方向交互（正向 26、负向 2）。当前合计 303 个计算输出、6 个别名、284 个质量字段，仍为 59 家族、38 日、9,500 行。原角色与原表达不变，单侧幅度输出的方向假设附带条件。
+
+看板默认“激进研究假设”，支持切回“原始登记”及筛选“原有表达／新增方向表达”。原始视图隐藏新增表达；新旧预期均可追溯，IC 不随预期切换改变。逐项理由、条件、竞争机制见 `有方向逻辑预期审阅.md` 与 `逻辑预期逐项审阅.csv`。最初 `factor_hypotheses.csv` 保留原样，新审阅在 `directional_hypotheses.csv` 单独冻结。此批数据已经看过，不标为期货事前检验。
+
+新增表达只在当前原子行组合已知父因子。父因子缺失仍为缺失，精确年龄门槛不放宽；门控未激活且所有父因子有效时记零。新增 IC 完整覆盖原有全部评价组合；不根据结果反改假设。默认口径下有 16 个预期正向新增表达在 30 期均为负 IC，两个预期负向表达在多数期限为正 IC，因此不能宣称方向化已经改善预测。
+
+可复现流程如下。初次运行会把原 275 因子实验保存到 `.cache/directional_review_base` 并校验指纹；再次运行复用该不可改写基准。`build` 写入 `.review_pending`，只重算新增表达并逐值核对原表和原 IC，验收后才发布。此脚本是基础实验之后的审阅步骤，不另建一套行情或 IC 口径。
+
+```powershell
+& $projectPython -X utf8 scripts/review_directional_ic.py build
+& $projectPython -X utf8 scripts/test_opening.py result/opening_execution/.review_pending
+& $projectPython -X utf8 scripts/verify_opening_artifacts.py result/opening_execution/.review_pending
+& $projectPython -X utf8 scripts/verify_directional_review.py result/opening_execution/.review_pending
+& 'C:/Users/Hello/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe' tests/opening_dashboard.cjs result/opening_execution/.review_pending
+& $projectPython -X utf8 scripts/review_directional_ic.py publish
+```
+
+单元测试入口先加载项目 PyArrow，再加载 pandas，避免混用系统和项目 Arrow 版本造成扩展类型注册冲突。当前 49 项测试；真实数据另核对新因子的父输入有效性交集、跨缺口／未来扰动、所有新增因子的独立逐日相关与汇总，网页校验原／新假设、来源筛选和原始 IC 不变。完整证据保存在结果目录。
+
+原版绿色筛选的 31／4 是“原始登记”口径；本次默认“激进研究假设”下为 64 个至少一期为正、5 个全部 30 期为正。这只是展示条件，不能将数量增加解释为预测能力改善。完整 IC 始终保留红色和缺失期限。
