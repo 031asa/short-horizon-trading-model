@@ -37,7 +37,25 @@ const path=require('path'),fs=require('fs'),assert=require('assert');
  await page.selectOption('#family','all');await page.click('[data-tab="families"]');assert.equal(await page.locator('#table tbody tr').count(),59);
  await page.click('[data-family="R05"]');await page.click('[data-tab="alias"]');assert.equal(await page.locator('#table tbody tr').count(),6);
  await page.click('[data-tab="all"]');await page.selectOption('#family','all');assert((await page.locator('#count').innerText()).includes('个输出'));await page.click('#next');assert((await page.locator('#page').innerText()).startsWith('2 /'));
+ // Compare the new positive-prior/green-IC filter with full-precision summary selections.
+ const filterCases=JSON.parse(fs.readFileSync(path.join(dir,'positive_filter_expected.json'),'utf8'));
+ await page.selectOption('#family','all');await page.selectOption('#history','all');await page.fill('#search','');
+ await page.selectOption('#obs','1');await page.selectOption('#anchor','decision');await page.selectOption('#pairs','own');await page.selectOption('#kind','cumulative');await page.click('[data-tab="computed"]');
+ await page.selectOption('#signFilter','positive_green');
+ for(const test of filterCases){
+   await page.selectOption('#target',test.target);await page.selectOption('#method',test.method);await page.selectOption('#greenH',test.scope);
+   const actual=[];
+   for(;;){actual.push(...await page.locator('#table tr[data-factor]').evaluateAll(rows=>rows.map(r=>r.dataset.factor)));if(await page.locator('#next').isDisabled())break;await page.click('#next')}
+   assert.deepEqual(actual,test.factors,JSON.stringify(test));
+ }
+ await page.selectOption('#target','signed');await page.selectOption('#method','rank_ic');await page.selectOption('#greenH','any');
+ assert((await page.locator('#count').innerText()).startsWith('31 '));
+ await page.screenshot({path:path.join(dir,'网页验收_正向绿色筛选.png')});
+ await page.selectOption('#signFilter','all');
+ await page.goto(require('url').pathToFileURL(path.join(dir,'全部因子IC与衰减.html')).href+'#positive');
+ assert.equal(await page.locator('#signFilter').inputValue(),'positive_green');
+ assert((await page.locator('#count').innerText()).startsWith('31 '));
  assert.deepEqual(errors,[]);assert.deepEqual(requests,[]);
- const result={html_sha256:require('crypto').createHash('sha256').update(fs.readFileSync(path.join(dir,'全部因子IC与衰减.html'))).digest('hex'),offline_file_open:true,external_requests:requests.length,browser_errors:errors,summary_cell_probes:verified,curve_points:titles.length,families:59,filters_detail_alias_quality_pagination:'passed'};
+ const result={html_sha256:require('crypto').createHash('sha256').update(fs.readFileSync(path.join(dir,'全部因子IC与衰减.html'))).digest('hex'),offline_file_open:true,external_requests:requests.length,browser_errors:errors,positive_filter_cases:filterCases.length,positive_filter_default_count:31,summary_cell_probes:verified,curve_points:titles.length,families:59,filters_detail_alias_quality_pagination:'passed'};
  fs.writeFileSync(path.join(dir,'dashboard_verification.json'),JSON.stringify(result,null,2));console.log(JSON.stringify(result));await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});

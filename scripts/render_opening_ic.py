@@ -38,6 +38,8 @@ def dashboard_payload(summary,registry,coverage,metadata):
 
 def render_report(summary,registry,coverage,metadata,output):
     output=Path(output)
+    from scripts.filter_positive_ic import filter_positive
+    filter_positive(output)
     info,payload=dashboard_payload(summary,registry,coverage,metadata)
     template=(Path(__file__).resolve().parents[1]/'utils/ic_dashboard.html').read_text(encoding='utf-8')
     (output/'全部因子IC与衰减.html').write_text(template.replace('__INFO__',info).replace('__PAYLOAD__',payload),encoding='utf-8')

@@ -167,7 +167,7 @@ def run(cold_start=10.,observations=(1.,2.,3.,4.,5.),publish=False,features_only
     metadata['verification'].update(verify_previous_ic(work))
     metadata['source_pdf']={'path':'研究资料/开盘首分钟_L1特征汇总_双类排版版.pdf','sha256':sha(ROOT/'研究资料/开盘首分钟_L1特征汇总_双类排版版.pdf')}
     metadata['hypotheses_note']='Computed-output priors retain original pre-IC registration; subsequently expanded quality-only diagnostics are recorded as not_applicable in feature_registry.csv.'
-    source_files=FEATURE_SOURCES+['utils/ic_statistics.py','utils/ic_validation.py','scripts/run_opening_ic.py','scripts/render_opening_ic.py','utils/ic_dashboard.html','scripts/verify_opening_artifacts.py','tests/opening_dashboard.cjs','tests/test_opening_full_features.py']
+    source_files=FEATURE_SOURCES+['utils/ic_statistics.py','utils/ic_validation.py','scripts/run_opening_ic.py','scripts/render_opening_ic.py','scripts/filter_positive_ic.py','utils/ic_dashboard.html','scripts/verify_opening_artifacts.py','tests/opening_dashboard.cjs','tests/test_opening_full_features.py']
     metadata['source_sha256']={n:sha(ROOT/n) for n in source_files}
     from scripts.render_opening_ic import render_report
     render_report(summary,registry,coverage,metadata,work)
