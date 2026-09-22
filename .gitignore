@@ -1,0 +1,15 @@
+.cache/
+tmp/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.parquet
+*.zip
+*.png
+*.pdf
+*.html
+*.csv
+result/
+output/
+新窗口交接_20260921/
+研究资料/
