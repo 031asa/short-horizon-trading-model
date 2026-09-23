@@ -4,12 +4,16 @@ ROOT=Path(__file__).resolve().parents[1];OUT=ROOT/'result/opening_prediction/no_
 
 def run():
     d=json.loads((OUT/'看板数据.json').read_text(encoding='utf-8'))
+    horizon_path=OUT/'期限看板数据.json'
+    if horizon_path.exists():d['horizon_analysis']=json.loads(horizon_path.read_text(encoding='utf-8'))
     payload=json.dumps(d,ensure_ascii=False,separators=(',',':')).replace('<','\\u003c')
     (OUT/'无冷启动_3秒小组合.html').write_text((ROOT/'utils/no_cold_dashboard.html').read_text(encoding='utf-8').replace('__DATA__',payload),encoding='utf-8')
     def row(model,segment='all'):return next(r for r in d['summary'] if r['sample']=='common' and r['segment']==segment and r['model']==model)
     s=row('selected_w3');b=row('baseline_w3');early=row('selected_w3','opening_0_9');eb=row('baseline_w3','opening_0_9')
     adaptive=row('adaptive_selected');ab=row('adaptive_baseline')
-    lines=['# 无冷启动：未来3秒小组合实验','','## 本轮发现','',
+    lines=['# 无冷启动：未来3秒小组合实验','',
+      '本报告的比较指标均为未来3秒；网页另有完整1–30秒期限表，它保持本轮3秒模型及信号冻结，仅检验信号在不同期限的有效性，不是每个期限分别重训。详见完整期限说明.md。','',
+      '## 本轮发现','',
       f"本轮没有找到整分钟稳定胜过三因子的优秀小组合。观察3秒的小组合准确率为{s['accuracy']:.1%}，三因子为{b['accuracy']:.1%}；两者Log loss分别为{s['logloss']:.4f}、{b['logloss']:.4f}。观察8／10秒也没有改善。",'',
       f"开盘0–9秒产生的任务，小组合在观察3秒时准确率为{early['accuracy']:.1%}，三因子为{eb['accuracy']:.1%}，共{early['n']}个检验任务。这是预设分段的描述结果，不可据此宣称整分钟有效或直接据此调整筛选目标。",'',
       f"四个训练折选定的观察期依次为{'／'.join(str(x['window']) for x in d['adaptive'])}秒。该选择流程的检验准确率为{adaptive['accuracy']:.1%}，对应三因子为{ab['accuracy']:.1%}，没有稳定超越。",'',
