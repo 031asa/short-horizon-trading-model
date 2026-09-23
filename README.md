@@ -125,3 +125,5 @@ IC 不是预测正确率或交易收益。重叠标签、同一时刻的重复�
 本机应用控制阻止新 scikit-learn 二进制加载，实际执行使用已有 NumPy 的 Newton 求解器，无新增运行依赖。对称 L2 惩罚所有类别的斜率，不惩罚截距；目标为日期等权平均交叉熵加 `||coef||² / (2*C*n_train)`。有限差分验证梯度与 Hessian，保存每折标准化和系数，可独立复算全部预测。继续使用用户指定的 Windows 本机运行方式。
 
 依次运行 `scripts/run_opening_prediction.py`、`scripts/render_opening_prediction.py`、`scripts/verify_opening_prediction.py`。`scripts/test_opening.py result/opening_prediction` 运行 68 项测试；`tests/opening_prediction_dashboard.cjs` 检验离线网页。实验配置在首次拟合前冻结，复跑需同一输入和参数。网页提供共同任务／各窗有效任务、分类混淆、高概率信号覆盖与逐日期配对差异。原子表校验指纹不变；新试验不引入撮合、盈亏或下单策略。
+
+六因子共线性诊断运行 `scripts/check_factor_collinearity.py`，结果位于 `result/opening_prediction/collinearity/六因子共线性报告.md`。只检查输入矩阵，不重训模型：日期等权／等行权、去除日均值、逐日及原训练段的 Pearson、Spearman、未正则化 VIF、标准化条件数与矩阵秩。主口径观察＝回看 1 秒，1–5 秒作为补充；逐因子辅助回归 VIF 与逆相关矩阵对角线交叉复核。额外三项测试覆盖正交、精确共线、常数列与量纲不变性。
