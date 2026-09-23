@@ -117,3 +117,11 @@ IC 不是预测正确率或交易收益。重叠标签、同一时刻的重复�
 当前逻辑预期已恢复保守口径：额外主假设与新增交互方向暂归不确定。175 种表达为正向 28、负向 4、不确定 143；所有 IC 原值保留。当前登记以 feature_registry.csv 为准；计算前冻结文件仅记录当时假设。可用 scripts/restore_conservative_priors.py 同步登记、看板与正向筛选导出。
 
 短观察期逐期限比较：result/opening_execution/短观察期因子初筛.html 主实验采用观察＝回看 1–5 秒，未来 1–30 秒分别从各组观察结束起算。附加同一结束时点的历史量诊断；28 种明确预期表达完整展示，4 种特殊参数另列。取消跨期限平均分与延迟筛选门槛；11 种早段／首秒候选，但目前没有通过“短窗接近有效长窗”的研究性区间规则。页面显示实际快照数量、完整曲线及逐期限配对差异；33,600 个原口径汇总已复核。运行 scripts/screen_short_windows.py 计算，再运行 scripts/render_short_windows.py 出报告与网页；原数据不改写。测试共 60 项，结果不代表统计显著或交易收益。
+
+## 短窗口涨跌预测试验
+
+新试验在 `result/opening_prediction/短窗口涨跌预测检验.html`，不修改原有 IC 页面和原子表。六个单因子、最新快照三因子组合、观察＝回看 1–5 秒的六因子组合，分别预测观察结束后 1／2／3 秒的 LastPrice 涨／平／跌。采用 L2 softmax 逻辑回归，前 20 日训练后逐段向前检验，共 18 个检验日；参数及最佳单因子只在每折训练期内部选择。原始 38 日已用于筛选因子，因此这里只是内部诊断。
+
+本机应用控制阻止新 scikit-learn 二进制加载，实际执行使用已有 NumPy 的 Newton 求解器，无新增运行依赖。对称 L2 惩罚所有类别的斜率，不惩罚截距；目标为日期等权平均交叉熵加 `||coef||² / (2*C*n_train)`。有限差分验证梯度与 Hessian，保存每折标准化和系数，可独立复算全部预测。继续使用用户指定的 Windows 本机运行方式。
+
+依次运行 `scripts/run_opening_prediction.py`、`scripts/render_opening_prediction.py`、`scripts/verify_opening_prediction.py`。`scripts/test_opening.py result/opening_prediction` 运行 68 项测试；`tests/opening_prediction_dashboard.cjs` 检验离线网页。实验配置在首次拟合前冻结，复跑需同一输入和参数。网页提供共同任务／各窗有效任务、分类混淆、高概率信号覆盖与逐日期配对差异。原子表校验指纹不变；新试验不引入撮合、盈亏或下单策略。
