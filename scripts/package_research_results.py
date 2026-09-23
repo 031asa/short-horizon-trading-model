@@ -69,6 +69,7 @@ def guide(commit,files,omitted):
 4. [开盘时间曲线](result/opening_prediction/three_factor_enhancement/time_of_minute/开盘首分钟_准确率时间曲线.png)。
 5. [短观察期因子初筛](result/opening_execution/短观察期因子初筛.md) 与 [全部因子IC看板](result/opening_execution/全部因子IC与衰减.html)。
 6. [每天最开始一笔的执行胜率](result/opening_execution/first_order_ablation/首笔执行结果.md)：按首条实际开盘行情发单，单独报告，不能混入名义09:30:00任务。
+7. [每分钟执行报告](result/opening_execution/every_minute/每分钟执行报告.md) 与 [全天分钟曲线](result/opening_execution/every_minute/每分钟执行表现.png)：冻结开盘模型，检验上午和下午每分钟的迁移效果。
 
 ## 各目录口径
 
@@ -81,6 +82,7 @@ def guide(commit,files,omitted):
 |three_factor_enhancement|固定三因子增强、全部期限、逐任务数据、模型参数及选择记录|观察＝回看1–10秒，三因子始终保留；时间曲线在time_of_minute|
 |opening_execution/two_stage_ablation|最新两阶段执行、成本、归因、逐任务事件与验收|使用四折固定3秒增强模型；18个检验日；每个任务独立模拟买卖各1手|
 |opening_execution/first_order_ablation|只看每天最开始发单任务的执行胜率|首条开盘快照为实际起点，约09:30:00.1～00.5；所有阶段从此起点计算|
+|opening_execution/every_minute|240个分钟时点、半小时、上午／下午及逐任务执行结果|整点后首条快照起算；冻结开盘模型直接迁移，缺行情和缺信号共同排除|
 
 ## 最新结果的含义
 
