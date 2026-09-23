@@ -127,3 +127,5 @@ IC 不是预测正确率或交易收益。重叠标签、同一时刻的重复�
 依次运行 `scripts/run_opening_prediction.py`、`scripts/render_opening_prediction.py`、`scripts/verify_opening_prediction.py`。`scripts/test_opening.py result/opening_prediction` 运行 68 项测试；`tests/opening_prediction_dashboard.cjs` 检验离线网页。实验配置在首次拟合前冻结，复跑需同一输入和参数。网页提供共同任务／各窗有效任务、分类混淆、高概率信号覆盖与逐日期配对差异。原子表校验指纹不变；新试验不引入撮合、盈亏或下单策略。
 
 六因子共线性诊断运行 `scripts/check_factor_collinearity.py`，结果位于 `result/opening_prediction/collinearity/六因子共线性报告.md`。只检查输入矩阵，不重训模型：日期等权／等行权、去除日均值、逐日及原训练段的 Pearson、Spearman、未正则化 VIF、标准化条件数与矩阵秩。主口径观察＝回看 1 秒，1–5 秒作为补充；逐因子辅助回归 VIF 与逆相关矩阵对角线交叉复核。额外三项测试覆盖正交、精确共线、常数列与量纲不变性。
+
+三因子显著性探索运行 `scripts/check_three_significance.py`，输出到 `result/opening_prediction/significance/`。第一折训练20日、固定当时C的1000次整日重采样用于系数方向稳定性；组合预测使用18日配对差的精确双侧符号翻转、六项Holm校正及四检验段整块翻转敏感性。条件系数区间不是普通回归p值；结果不校正此前的因子／期限筛选，不代表独立验证显著性。
