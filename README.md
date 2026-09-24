@@ -197,3 +197,7 @@ C档位拐点搜索：依次运行 `python -m scripts.run_c_passive_offset --swe
 按新C基准重做三动作阈值实验：依次运行 `python -m scripts.run_rebased_thresholds`、`python -m scripts.deliver_rebased_thresholds`，输出到 `result/opening_execution/opening_ranges/rebased_three_action_threshold/`。18日重新回放三动作；40日复用已核验的同模型、同任务三动作成交路径，重新按新C汇总和比较，不重训。无阈值基准是第3秒限价分支使用LastPrice的新C；阈值0则回到双阶段19档。分别保存相对第3秒市价和相对新C的信号强弱分箱曲线，前者零线不是任务开始立即市价。分箱仅统计第3秒未成交订单，使用各箱实际方向构成；全任务成本表仍按日期等权、买卖各半。
 
 首小时逐秒任务，最低成本阈值均为0，相对新C节约18日0.156690bp、40日0.173664bp；尚未找到保留LastPrice中间档且更优的阈值。相对立即市价分别节约0.028300bp和0.023640bp，40日区间跨零。40日含训练内回算；日期块区间未校正档位或阈值筛选。新C逐笔与上一轮结果一致、40日阈值路径与原实验一致、阈值决策和配对汇总独立复核；原输入指纹不变。独立包为 `result/新C基准_三动作阈值实验_18日与40日.zip`。
+
+固定初始19档、单独扫描第3秒档位：运行 `python -m scripts.run_signal_offset_sweep` 和 `python -m scripts.deliver_signal_offset_sweep`，独立结果在 `result/opening_execution/opening_ranges/signal_offset_sweep/`。扫描0–30档以及40、60档，仅修改第3秒限价分支，不利信号仍市价。原撮合增加可选 `c_signal_offset_ticks`，默认行为保持不变，不可与动作覆盖同时指定。完整有效路径用独立向量扫描加速，其余路径调用原事件撮合；固定间隔样本全部档位另用原事件撮合和最早成交扫描交叉验证。
+
+18日62982任务、40日覆盖135318任务全部保留，各档位与基准同任务比较。0/19档逐笔精确复现新/旧C，135729笔完整事件检查、124项测试通过，输入指纹不变。直接测试入口存在Arrow加载顺序冲突，使用项目既有 `scripts/test_opening.py` 入口全量通过。首小时逐秒的18日最低15档成本0.663378bp，只比19档省0.000209bp，配对区间[-0.004338,0.005016]；40日最低仍19档0.757898bp。15档平均较19档快约0.18秒，但不能确认成本更优。区间未校正选档，40日含训练内回算。交付两张PNG/SVG、8组分方向汇总、逐日逐单数据及 `result/初始19档_第3秒固定档位扫描.zip`，未进行动态信号调档。

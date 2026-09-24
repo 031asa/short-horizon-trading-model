@@ -19,6 +19,31 @@ def session(times=None, price=None, bid=None, ask=None, volume=None):
 
 
 class TwoStageTests(unittest.TestCase):
+    def test_separate_signal_offset_preserves_initial_and_old_default(self):
+        for side in (-1, 1):
+            for k in (0, 14, 15, 19, 30, 60):
+                r = simulate(session(), 0, side, POLICIES[2], -side,
+                             c_limit_offset_ticks=19, c_signal_offset_ticks=k)
+                orders = [e for e in r['trace'] if e['event']=='submit']
+                self.assertEqual(orders[0]['limit_ticks'], 100-side*19)
+                updates = [e for e in orders if e['stage']=='signal']
+                if k==19:
+                    self.assertFalse(updates)
+                    self.assertEqual(r, simulate(session(), 0, side, POLICIES[2], -side, c_limit_offset_ticks=19))
+                else:
+                    self.assertEqual(updates[0]['limit_ticks'], 100-side*k)
+                if k==0:
+                    self.assertEqual(r, simulate(session(), 0, side, POLICIES[2], -side, c_limit_offset_ticks=19, c_signal_action='lastprice'))
+
+    def test_separate_offset_validation_and_market_branch(self):
+        for value in (-1, 1.5, True):
+            with self.assertRaises(ValueError):
+                simulate(session(), 0, 1, POLICIES[2], -1, c_signal_offset_ticks=value)
+        for side in (-1,1):
+            a=simulate(session(),0,side,POLICIES[2],side,c_limit_offset_ticks=19)
+            b=simulate(session(),0,side,POLICIES[2],side,c_limit_offset_ticks=19,c_signal_offset_ticks=14)
+            self.assertEqual(a,b)
+
     def test_three_action_only_changes_signal_limit(self):
         for side in (-1, 1):
             d = session()

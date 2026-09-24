@@ -81,6 +81,8 @@ def guide(commit,files,omitted):
 
 14. [新C基准的三动作阈值实验](result/opening_execution/opening_ranges/rebased_three_action_threshold/结果说明.md)：18日和40日信号强弱分箱、三动作成本曲线及完整阈值扫描。无阈值基准是第3秒LastPrice，阈值0是旧双阶段19档；分别提供相对第3秒市价与相对新C的曲线，不能混用零线。
 
+15. [固定初始19档，仅扫描第3秒档位](result/opening_execution/opening_ranges/signal_offset_sweep/结果说明.md)：0–30、40、60档的成本、等待和兜底曲线，18日/40日覆盖分别出图；所有档位共同任务，无新增排除。未做信号动态调档，最低点为描述性搜索结果。
+
 ## 各目录口径
 
 |目录|内容|使用边界|
