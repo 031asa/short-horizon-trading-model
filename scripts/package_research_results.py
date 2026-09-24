@@ -74,6 +74,7 @@ def guide(commit,files,omitted):
 7. [每分钟执行报告](result/opening_execution/every_minute/每分钟执行报告.md) 与 [全天分钟曲线](result/opening_execution/every_minute/每分钟执行表现.png)：冻结开盘模型，检验上午和下午每分钟的迁移效果。
 8. [立即市价对照报告](result/opening_execution/every_minute/market_comparison/市价对照报告.md)：保持相同执行延迟，用任务开始即提交的市价单检验A／B／C是否真正节省成本。
 9. [开盘前1／19／30／60分钟比较](result/opening_execution/opening_ranges/时段比较说明.md)：每个时间段同时展示每分钟与每秒任务，共8行；统一整秒后首条快照起算。原首分钟1062任务的旧时钟口径单独保留。
+10. [四策略完整对比：C固定19档](result/opening_execution/opening_ranges/four_strategy_c19/四策略对比说明.md)：立即市价、A、B、C19在8组共同样本上的执行成本、完成时间、成交方式与成本胜平负；含PNG、SVG、CSV和逐任务结果，不展示各时段最低档。
 
 ## 各目录口径
 
