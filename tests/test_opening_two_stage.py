@@ -28,11 +28,15 @@ class TwoStageTests(unittest.TestCase):
             self.assertEqual(r['fill_stage'], 'deadline')
 
     def test_c_passive_offset_fills_at_offset_limit(self):
-        for side in (1, -1):
-            d = session()
-            (d.a if side==1 else d.b)[4] = 100-side
-            r = simulate(d, 0, side, POLICIES[2], 0, c_limit_offset_ticks=1)
-            self.assertEqual((r['fill_ticks'], r['cost_ticks']), (100-side, -1))
+        for offset in (1, 2, 5, 10, 20, 40):
+            for side in (1, -1):
+                d = session()
+                if side == 1:
+                    d.a[4], d.b[4] = 100-offset, 99-offset
+                else:
+                    d.b[4], d.a[4] = 100+offset, 101+offset
+                r = simulate(d, 0, side, POLICIES[2], 0, c_limit_offset_ticks=offset)
+                self.assertEqual((r['fill_ticks'], r['cost_ticks']), (100-side*offset, -offset))
 
     def test_c_offset_does_not_change_ab(self):
         for policy in POLICIES[:2]:

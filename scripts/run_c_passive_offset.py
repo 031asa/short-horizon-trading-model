@@ -93,15 +93,24 @@ def main():
     print(summary[summary.side=='买卖各半'].to_string(index=False),flush=True)
 
 
-def sweep():
-    """Compare 0..5 ticks on one shared cohort; preserve the one-tick experiment."""
-    dest=DEST/'multi_offset';dest.mkdir(parents=True,exist_ok=True)
+def sweep(max_offset=5, offsets=None):
+    """Compare integer offsets on one shared cohort; preserve earlier experiments."""
+    dest=DEST/('multi_offset' if max_offset==5 else 'offset_search');dest.mkdir(parents=True,exist_ok=True)
+    offsets=sorted(set(range(max_offset+1) if offsets is None else offsets))
     inputs=[RAW,SECONDS,MODELS,DEST/'C偏移1tick逐任务.parquet']
     hashes={str(p.relative_to(ROOT)):sha(p) for p in inputs}
     old=pd.read_parquet(SECONDS);old=old[old.common_valid].copy()
     one=pd.read_parquet(inputs[-1]);one=one.drop(columns='paired_valid')
     one['offset_ticks']=1
-    raw=pd.read_parquet(RAW);records=[];verified=0
+    cache=None
+    if max_offset>5:
+        cache_path=dest/'各档逐任务.parquet'
+        if not cache_path.exists():cache_path=DEST/'multi_offset/各档逐任务.parquet'
+        cache=pd.read_parquet(cache_path).drop(columns=['sweep_valid'],errors='ignore')
+        cache=cache[cache.offset_ticks.isin(offsets)]
+    present={0,1} if cache is None else set(cache.offset_ticks.unique())
+    missing=sorted(set(offsets)-present)
+    raw=pd.read_parquet(RAW);parts=[];verified=0
     cfg=ICConfig(schedule=ScheduleConfig(cold_start_seconds=0,task_range_seconds=3600,observation_seconds=(3.,)))
     for date,g in raw.groupby(raw.Date.astype(str),sort=True):
         tasks=old[(old.trade_date==date)&(old.policy=='C_limit_first')]
@@ -109,9 +118,10 @@ def sweep():
         start=pd.Timestamp(date+' 09:30',tz='Asia/Shanghai')
         g=g[(g.Datetime>=start)&(g.Datetime<=start+pd.Timedelta(seconds=3650))]
         d=SessionData(g,start,cfg)
+        records=[]
         for r in tasks.itertuples():
             signal=None if pd.isna(r.signal) else int(r.signal)
-            for offset in [2,3,4,5]:
+            for offset in missing:
                 new=simulate(d,r.task_seconds,int(r.direction),'C_limit_first',signal,c_limit_offset_ticks=offset)
                 trace=new.pop('trace')
                 for e in trace:
@@ -122,11 +132,14 @@ def sweep():
                     assert new['fill_ticks']==price and new['fill_seconds']==d.times[idx]
                     verified+=1
                 records.append(dict(trade_date=date,nominal_second=r.nominal_second,offset_ticks=offset,**new))
-        print(date,'offsets 2..5 complete',flush=True)
+        if records:
+            part=dest/f'.offset_{date}.parquet'
+            pd.DataFrame(records).to_parquet(part,index=False);parts.append(part)
+        print(date,'offsets',missing,'complete',flush=True)
     zero=old[old.policy=='C_limit_first'].copy();zero['offset_ticks']=0
-    allrows=pd.concat([zero,one,pd.DataFrame(records)],ignore_index=True)
+    allrows=pd.concat(([zero,one] if cache is None else [cache])+[pd.read_parquet(p) for p in parts],ignore_index=True)
     key=['trade_date','nominal_second']
-    assert allrows.groupby(key).size().eq(12).all()
+    assert allrows.groupby(key).size().eq(2*len(offsets)).all()
     assert not allrows.duplicated(key+['direction','offset_ticks']).any()
     valid=allrows.assign(ok=allrows.status.eq('filled')).groupby(key).ok.all()
     allrows=allrows.merge(valid.rename('sweep_valid'),on=key)
@@ -158,23 +171,31 @@ def sweep():
     summary.to_csv(dest/'多档对照.csv',index=False,encoding='utf-8-sig')
     pd.DataFrame(dayrows).to_csv(dest/'逐日结果.csv',index=False,encoding='utf-8-sig')
     for p in inputs:assert sha(p)==hashes[str(p.relative_to(ROOT))]
-    save_json(dest/'验收与口径.json',dict(offsets=list(range(6)),tick_size=.2,
+    save_json(dest/'验收与口径.json',dict(offsets=offsets,tick_size=.2,
         rule='C initial and T+3 limits = LastPrice - direction * offset; frozen signal and unchanged market rules',
         original_tasks=len(valid),common_tasks=int(valid.sum()),lost_tasks=int((~valid).sum()),
         independent_fills_verified=verified,input_sha256=hashes,original_inputs_unchanged=True,
         comparison='all offsets and both sides share same tasks; date equal; exploratory sweep, no independent optimum validation'))
-    lines=['# C限价被动偏移0–5 tick','',
+    lines=[f'# C限价被动偏移0–{max_offset} tick','',
         '买价=LastPrice−档数×0.2；卖价=LastPrice+档数×0.2。初始和第3秒更新限价均偏移，其他执行规则及冻结信号不变。',
         f'18日期等权，买卖各半。全部档位共同有效任务{int(valid.sum()):,}个，较原样本共同剔除{int((~valid).sum())}个，排除明细已保存。',
         '本轮为已有数据上探索档位，最低历史成本不代表已验证最优档位。L1代理撮合未计排队、冲击和手续费。','',
-        '|前几分钟|频率|有效任务|市价|A|B|C0|C1|C2|C3|C4|C5|',
-        '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
+        '|前几分钟|频率|有效任务|市价|A|B|'+ '|'.join(f'C{k}' for k in offsets)+'|',
+        '|---|---|---:|---:|---:|---:|'+ '---:|'*len(offsets)]
     for (length,grid),g in summary[summary.side=='买卖各半'].groupby(['minutes','grid'],sort=False):
         r=g.iloc[0]
         lines.append(f'|{length}|{grid}|{int(r.valid_tasks)}|{r.market:.4f}|{r.A:.4f}|{r.B:.4f}|'+ '|'.join(f'{v:.4f}' for v in g.sort_values('offset_ticks').cost)+'|')
     (dest/'多档说明.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
-    print(summary[summary.side=='买卖各半'].to_string(index=False),flush=True)
+    s=summary[(summary.side=='买卖各半')&(summary.grid=='second')]
+    print(s.pivot(index='offset_ticks',columns='minutes',values='cost').to_string(),flush=True)
 
 
 if __name__=='__main__':
-    sweep() if '--sweep' in sys.argv else main()
+    import argparse
+    parser=argparse.ArgumentParser();parser.add_argument('--sweep',action='store_true')
+    parser.add_argument('--max-offset',type=int,default=5)
+    parser.add_argument('--coarse-tail',action='store_true',help='0..20 plus 24,28,32,40,60,100 ticks')
+    args=parser.parse_args()
+    if not 5<=args.max_offset<=100:parser.error('max-offset must be between 5 and 100')
+    offsets=list(range(21))+[24,28,32,40,60,100] if args.coarse_tail else None
+    sweep(100 if args.coarse_tail else args.max_offset,offsets) if args.sweep else main()
