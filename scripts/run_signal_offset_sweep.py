@@ -7,7 +7,7 @@ DEST=OUT/'signal_offset_sweep'
 OFFSETS=np.array(list(range(31))+[40,60],dtype=int)
 
 
-def safe_sweep(d,t,side):
+def safe_sweep(d,t,side,offsets=OFFSETS):
     """Independent vector scan on fully validated paths; old order has priority."""
     origin=d.source_index(t);p0=d.p[origin];old=p0-side*19
     first=int(np.searchsorted(d.times,t,'right'))+1
@@ -20,9 +20,9 @@ def safe_sweep(d,t,side):
     ids=np.arange(first,arrival+1)
     oldhits=hit(ids,np.array([old]))[:,0]
     if oldhits.any():
-        ix=np.full(len(OFFSETS),ids[np.flatnonzero(oldhits)[0]])
-        return ix,np.full(len(OFFSETS),old),np.zeros(len(OFFSETS),int)
-    limits=d.p[d.source_index(t+3)]-side*OFFSETS
+        ix=np.full(len(offsets),ids[np.flatnonzero(oldhits)[0]])
+        return ix,np.full(len(offsets),old),np.zeros(len(offsets),int)
+    limits=d.p[d.source_index(t+3)]-side*offsets
     ids=np.arange(arrival,deadline+1);hits=hit(ids,limits)
     filled=hits.any(axis=0);ix=np.where(filled,ids[hits.argmax(axis=0)],deadline)
     prices=np.where(filled,limits,d.a[deadline] if side==1 else d.b[deadline])

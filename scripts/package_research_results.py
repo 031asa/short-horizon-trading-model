@@ -83,6 +83,8 @@ def guide(commit,files,omitted):
 
 15. [固定初始19档，仅扫描第3秒档位](result/opening_execution/opening_ranges/signal_offset_sweep/结果说明.md)：0–30、40、60档的成本、等待和兜底曲线，18日/40日覆盖分别出图；所有档位共同任务，无新增排除。未做信号动态调档，最低点为描述性搜索结果。
 
+16. [上涨概率与挂档线性关系](result/opening_execution/opening_ranges/probability_offset_relation/结果说明.md)：买卖两侧到3秒均存活的同任务，统一p_up、强制限价0–60档诊断；线性拟合、日期前推比较及0.10–0.40分界扫描。样本口径不同于保留原信号市价分支的完整C策略，不可直接混比成本。
+
 ## 各目录口径
 
 |目录|内容|使用边界|
