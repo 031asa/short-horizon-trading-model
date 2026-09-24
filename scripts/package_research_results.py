@@ -12,6 +12,8 @@ RESULT=ROOT/'result'
 ARCHIVE=RESULT/'研究结果汇总.zip'
 PREFIX='短时交易模型研究结果/'
 EXCLUSIONS={
+    'result/opening_execution/opening_ranges/首分钟1080任务市价对照.parquet':'已弃用的混合起点中间结果；正式逐秒数据见首小时逐秒全部执行.parquet',
+    'result/opening_execution/opening_ranges/口径与复核.json':'旧版汇总元数据；当前以逐秒实验口径.json和逐秒验收.json为准',
     'result/opening_execution/summary_ic.csv':'与summary_ic.parquet重复的超大CSV导出；保留Parquet汇总',
     'result/opening_execution/daily_ic.parquet':'完整逐日IC约1GB，保留在原目录；本包保留完整IC汇总及短窗口逐日IC',
     'result/opening_execution/短观察期_看板数据.json':'已嵌入同目录短观察期因子初筛.html，避免重复打包',
@@ -71,7 +73,7 @@ def guide(commit,files,omitted):
 6. [每天最开始一笔的执行胜率](result/opening_execution/first_order_ablation/首笔执行结果.md)：按首条实际开盘行情发单，单独报告，不能混入名义09:30:00任务。
 7. [每分钟执行报告](result/opening_execution/every_minute/每分钟执行报告.md) 与 [全天分钟曲线](result/opening_execution/every_minute/每分钟执行表现.png)：冻结开盘模型，检验上午和下午每分钟的迁移效果。
 8. [立即市价对照报告](result/opening_execution/every_minute/market_comparison/市价对照报告.md)：保持相同执行延迟，用任务开始即提交的市价单检验A／B／C是否真正节省成本。
-9. [开盘前1／19／30／60分钟比较](result/opening_execution/opening_ranges/时段比较说明.md)：统一每分钟抽样；另补原首分钟逐秒任务的市价对照，分别展示。
+9. [开盘前1／19／30／60分钟比较](result/opening_execution/opening_ranges/时段比较说明.md)：每个时间段同时展示每分钟与每秒任务，共8行；统一整秒后首条快照起算。原首分钟1062任务的旧时钟口径单独保留。
 
 ## 各目录口径
 

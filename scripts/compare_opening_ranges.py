@@ -41,6 +41,10 @@ def second_grid():
 
 def main():
     OUT.mkdir(parents=True,exist_ok=True)
+    if (OUT/'首小时逐秒全部执行.parquet').exists():
+        from scripts.run_second_ranges import report
+        report()
+        return
     hashes={str(p.relative_to(ROOT)):sha(p) for p in [SOURCE,SECOND,RAW]}
     frame=pd.read_parquet(SOURCE)
     am=frame[frame.part=='AM'].copy()
@@ -86,7 +90,7 @@ def main():
         market='submitted at same T with same two future snapshot delay; opposite best quote',
         dates=18,day_equal_weight=True,all_shared_tasks_preserved=True,
         legacy_034bp_reproduced=True,original_files_unchanged=True))
-    lines=['# 开盘前1、19、30、60分钟比较','',
+    lines=['# 开盘时点与时间段比较','',
         '主表统一为每分钟发起一个任务，取整点后首条快照（偏移≤0.5秒）作为T。18个检验日；买卖各半、日期等权。',
         '前19分钟严格指[09:30,09:49)，并非前20分钟；前半小时到10:00之前，前1小时到10:30之前。',
         '每个任务观察3秒、T+10兜底；立即市价也保留两条快照延迟。所有成本都以同一任务初始LastPrice计算。',
