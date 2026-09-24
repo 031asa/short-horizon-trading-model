@@ -137,7 +137,7 @@ def aggregate(orders, reference):
     return summary
 
 
-def draw(summary):
+def draw(summary, scope_label='18日期等权', expected=None, title_prefix='', show_days=False):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -145,15 +145,18 @@ def draw(summary):
     plt.rcParams.update({'font.sans-serif':['Microsoft YaHei','SimHei'],'axes.unicode_minus':False,
         'font.size':10,'axes.spines.top':False,'axes.spines.right':False,'svg.fonttype':'path'})
     s=summary[summary.side=='买卖各半']
+    expected=EXPECTED if expected is None else expected
     periods=[1,19,30,60];x=np.arange(4);width=.19
     handles=[Patch(color=COLORS[p],label=NAMES[p]) for p in ORDER]
-    footer='18日期等权 · 买卖各半 · n为任务时点数，每时点双向各1手 · C买价=LastPrice−3.8、卖价=LastPrice+3.8 · 保留执行延迟'
+    footer=scope_label+' · 买卖各半 · n为任务时点数，每时点双向各1手 · C买价=LastPrice−3.8、卖价=LastPrice+3.8 · 保留执行延迟'
 
     def data(grid,strategy):
         return s[(s.grid==grid)&(s.strategy==strategy)].set_index('minutes').loc[periods]
 
     def period_ticks(ax,grid):
-        ax.set_xticks(x,[f'前{v}分钟\nn={EXPECTED[grid][v]:,}' for v in periods])
+        labels=[f'前{v}分钟\nn={expected[grid][v]:,}'+
+                (f' · {int(data(grid,"M").loc[v,"days"])}日' if show_days else '') for v in periods]
+        ax.set_xticks(x,labels)
         ax.grid(axis='y',alpha=.15);ax.set_axisbelow(True)
 
     def save(fig,name):
@@ -162,7 +165,7 @@ def draw(summary):
         plt.close(fig)
 
     fig,axes=plt.subplots(2,2,figsize=(15,9.5))
-    fig.suptitle('四策略执行成本对比｜C 固定被动 19 档',fontsize=18,y=.975)
+    fig.suptitle(title_prefix+'四策略执行成本对比｜C 固定被动 19 档',fontsize=18,y=.975)
     fig.legend(handles=handles,loc='upper center',bbox_to_anchor=(.5,.941),ncol=4,frameon=False)
     for row,grid in enumerate(['minute','second']):
         label='每分钟任务' if grid=='minute' else '每秒任务'
@@ -187,7 +190,7 @@ def draw(summary):
     save(fig,'01_执行成本与节约')
 
     fig,axes=plt.subplots(1,2,figsize=(15,5.7))
-    fig.suptitle('四策略完成时间对比｜从实际任务起点到成交',fontsize=18,y=.975)
+    fig.suptitle(title_prefix+'四策略完成时间对比｜从实际任务起点到成交',fontsize=18,y=.975)
     fig.legend(handles=handles,loc='upper center',bbox_to_anchor=(.5,.919),ncol=4,frameon=False)
     ymax=s.elapsed_seconds.max()*1.19
     for ax,grid in zip(axes,['minute','second']):
@@ -202,7 +205,7 @@ def draw(summary):
 
     def stacked(name,title,columns,labels,colors,note):
         fig,axes=plt.subplots(2,4,figsize=(16,9))
-        fig.suptitle(title,fontsize=18,y=.975)
+        fig.suptitle(title_prefix+title,fontsize=18,y=.975)
         for i,grid in enumerate(['minute','second']):
             for j,minutes in enumerate(periods):
                 ax=axes[i,j]
@@ -216,7 +219,8 @@ def draw(summary):
                             ax.text(bar.get_x()+bar.get_width()/2,b+v/2,f'{v:.1f}%',ha='center',va='center',fontsize=8,
                                     color='white' if color=='#56616D' else '#172333')
                     bottom+=vals
-                ax.set_title(f'前{minutes}分钟 · '+('每分钟' if grid=='minute' else '每秒')+f'\nn={EXPECTED[grid][minutes]:,}',fontsize=11,pad=10)
+                ax.set_title(f'前{minutes}分钟 · '+('每分钟' if grid=='minute' else '每秒')+f'\nn={expected[grid][minutes]:,}'+
+                             (f' · {int(d.loc["M","days"])}日' if show_days else ''),fontsize=11,pad=10)
                 ax.set_xticks(x,ORDER);ax.set_ylim(0,102);ax.set_yticks([0,25,50,75,100])
                 if j==0:ax.set_ylabel('成交比例 / %' if columns==METHODS else '任务比例 / %')
                 for tick,p in zip(ax.get_xticklabels(),ORDER):tick.set_color(COLORS[p]);tick.set_fontweight('bold')
@@ -224,7 +228,7 @@ def draw(summary):
         fig.legend([Patch(color=c,label=l) for c,l in zip(colors,labels)],labels,
             loc='lower center',bbox_to_anchor=(.5,.074),ncol=min(5,len(labels)),frameon=False,fontsize=10)
         fig.text(.5,.049,note,ha='center',fontsize=9,color='#444444')
-        fig.text(.5,.022,'M 立即市价  |  A 初始限价  |  B 先观察3秒  |  C 被动19档；18日期等权、买卖各半；n为任务时点数，每时点双向各1手。',ha='center',fontsize=9,color='#444444')
+        fig.text(.5,.022,'M 立即市价  |  A 初始限价  |  B 先观察3秒  |  C 被动19档；'+scope_label+'、买卖各半；n为任务时点数，每时点双向各1手。',ha='center',fontsize=9,color='#444444')
         fig.subplots_adjust(left=.055,right=.98,bottom=.20,top=.875,hspace=.40,wspace=.23)
         save(fig,name)
     stacked('03_成交方式构成','四策略成交方式构成｜按最终实际成交方式分类',METHODS,METHOD_NAMES,METHOD_COLORS,
