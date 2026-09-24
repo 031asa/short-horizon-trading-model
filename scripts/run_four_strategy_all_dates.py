@@ -138,7 +138,7 @@ def main():
     print(summary[(summary.side=='买卖各半')&(summary.strategy=='C')][['minutes','grid','days','tasks','cost_bp','saving_vs_market_bp']].to_string(index=False),flush=True)
 
 
-def aggregate(orders,dates):
+def aggregate(orders,dates,source_days=40):
     metrics=['cost_bp','saving_vs_market_bp','elapsed_seconds']+charts.METHODS+charts.OUTCOMES
     rows=[];daily_rows=[];coverage=[];wide=[];counts={'minute':{},'second':{}}
     for minutes in [1,19,30,60]:
@@ -153,13 +153,13 @@ def aggregate(orders,dates):
                 for strategy,z in sub.groupby('strategy'):
                     daily=z.groupby('trade_date')[metrics].mean().sort_index()
                     lo,hi=date_block_interval(daily.saving_vs_market_bp)
-                    row=dict(minutes=minutes,grid=grid,side=side,strategy=strategy,source_days=40,days=len(daily),tasks=ntasks,orders=len(z),
+                    row=dict(minutes=minutes,grid=grid,side=side,strategy=strategy,source_days=source_days,days=len(daily),tasks=ntasks,orders=len(z),
                         **daily.mean().to_dict(),saving_ci_low=float(lo),saving_ci_high=float(hi))
                     rows.append(row)
                     for date,r in daily.iterrows():daily_rows.append(dict(minutes=minutes,grid=grid,side=side,strategy=strategy,trade_date=date,**r.to_dict()))
                     np.testing.assert_allclose(sum(row[k] for k in charts.METHODS),1,atol=1e-12)
                     np.testing.assert_allclose(sum(row[k] for k in charts.OUTCOMES),1,atol=1e-12)
-            r=dict(时间段=f'前{minutes}分钟',任务频率='每分钟' if grid=='minute' else '每秒',覆盖日期数=40,有效日期数=len(byday),有效任务数=ntasks)
+            r=dict(时间段=f'前{minutes}分钟',任务频率='每分钟' if grid=='minute' else '每秒',覆盖日期数=source_days,有效日期数=len(byday),有效任务数=ntasks)
             for v in [v for v in rows if v['minutes']==minutes and v['grid']==grid and v['side']=='买卖各半']:
                 for label,k in [('成本bp','cost_bp'),('完成秒数','elapsed_seconds'),('较市价节约bp','saving_vs_market_bp'),('胜率','win'),('平局率','tie'),('负率','loss')]:r[v['strategy']+'_'+label]=v[k]
             wide.append(r)

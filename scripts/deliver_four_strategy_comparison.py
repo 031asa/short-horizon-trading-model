@@ -137,7 +137,8 @@ def aggregate(orders, reference):
     return summary
 
 
-def draw(summary, scope_label='18日期等权', expected=None, title_prefix='', show_days=False):
+def draw(summary, scope_label='18日期等权', expected=None, title_prefix='', show_days=False,
+         c_description='固定被动 19 档', c_footer='C买价=LastPrice−3.8、卖价=LastPrice+3.8'):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -148,7 +149,7 @@ def draw(summary, scope_label='18日期等权', expected=None, title_prefix='', 
     expected=EXPECTED if expected is None else expected
     periods=[1,19,30,60];x=np.arange(4);width=.19
     handles=[Patch(color=COLORS[p],label=NAMES[p]) for p in ORDER]
-    footer=scope_label+' · 买卖各半 · n为任务时点数，每时点双向各1手 · C买价=LastPrice−3.8、卖价=LastPrice+3.8 · 保留执行延迟'
+    footer=scope_label+' · 买卖各半 · n为任务时点数，每时点双向各1手 · '+c_footer+' · 保留执行延迟'
 
     def data(grid,strategy):
         return s[(s.grid==grid)&(s.strategy==strategy)].set_index('minutes').loc[periods]
@@ -165,7 +166,7 @@ def draw(summary, scope_label='18日期等权', expected=None, title_prefix='', 
         plt.close(fig)
 
     fig,axes=plt.subplots(2,2,figsize=(15,9.5))
-    fig.suptitle(title_prefix+'四策略执行成本对比｜C 固定被动 19 档',fontsize=18,y=.975)
+    fig.suptitle(title_prefix+'四策略执行成本对比｜C '+c_description,fontsize=18,y=.975)
     fig.legend(handles=handles,loc='upper center',bbox_to_anchor=(.5,.941),ncol=4,frameon=False)
     for row,grid in enumerate(['minute','second']):
         label='每分钟任务' if grid=='minute' else '每秒任务'
@@ -228,7 +229,7 @@ def draw(summary, scope_label='18日期等权', expected=None, title_prefix='', 
         fig.legend([Patch(color=c,label=l) for c,l in zip(colors,labels)],labels,
             loc='lower center',bbox_to_anchor=(.5,.074),ncol=min(5,len(labels)),frameon=False,fontsize=10)
         fig.text(.5,.049,note,ha='center',fontsize=9,color='#444444')
-        fig.text(.5,.022,'M 立即市价  |  A 初始限价  |  B 先观察3秒  |  C 被动19档；'+scope_label+'、买卖各半；n为任务时点数，每时点双向各1手。',ha='center',fontsize=9,color='#444444')
+        fig.text(.5,.022,'M 立即市价  |  A 初始限价  |  B 先观察3秒  |  C '+c_description+'；'+scope_label+'、买卖各半。',ha='center',fontsize=9,color='#444444')
         fig.subplots_adjust(left=.055,right=.98,bottom=.20,top=.875,hspace=.40,wspace=.23)
         save(fig,name)
     stacked('03_成交方式构成','四策略成交方式构成｜按最终实际成交方式分类',METHODS,METHOD_NAMES,METHOD_COLORS,

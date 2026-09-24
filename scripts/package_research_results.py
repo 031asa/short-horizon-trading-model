@@ -77,6 +77,7 @@ def guide(commit,files,omitted):
 10. [四策略完整对比：C固定19档](result/opening_execution/opening_ranges/four_strategy_c19/四策略对比说明.md)：立即市价、A、B、C19在8组共同样本上的执行成本、完成时间、成交方式与成本胜平负；含PNG、SVG、CSV和逐任务结果，不展示各时段最低档。
 11. [四策略40日覆盖版](result/opening_execution/opening_ranges/four_strategy_c19_all40/四策略40日对比说明.md)：全部原始日期统一使用最新W3第四折模型重算；固定C19，包含训练内回算，仅作全样本探索。缺行情的日期和任务单列，图中标注实际有效日期数。
 12. [第3秒三动作阈值实验](result/opening_execution/opening_ranges/three_action_threshold/三动作阈值实验说明.md)：初始19档不变，同单回放市价、LastPrice、被动19档；完整阈值扫描、8组对照、逐日稳定性及3秒未成交子集。首小时最低阈值退回0，等同C19；新增LastPrice中间档未改善成本，固定19档消融另报等待代价。
+13. **按用户原意：仅初始19档，第3秒恢复LastPrice**：[18日四策略](result/opening_execution/opening_ranges/initial_only_c19/18d/四策略对比说明.md) 与 [40日四策略](result/opening_execution/opening_ranges/initial_only_c19/40d/四策略对比说明.md)。与上面的双阶段19档是不同策略；旧结果完整保留。两版独立重放M/A/B/C并按原共同任务与立即市价比较。第12项中的LastPrice控制才对应这里的40日C；该项阈值0对应双阶段19档，不能混淆基准。
 
 ## 各目录口径
 
