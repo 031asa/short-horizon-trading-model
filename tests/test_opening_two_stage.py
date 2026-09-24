@@ -19,6 +19,45 @@ def session(times=None, price=None, bid=None, ask=None, volume=None):
 
 
 class TwoStageTests(unittest.TestCase):
+    def test_three_action_only_changes_signal_limit(self):
+        for side in (-1, 1):
+            d = session()
+            for action in ('lastprice', 'passive', 'market'):
+                r = simulate(d, 0, side, POLICIES[2], 0, c_limit_offset_ticks=19, c_signal_action=action)
+                orders = [e for e in r['trace'] if e['event'] == 'submit']
+                self.assertEqual(orders[0]['limit_ticks'], 100-side*19)
+                if action == 'lastprice':
+                    self.assertEqual(orders[1]['limit_ticks'], 100)
+                elif action == 'passive':
+                    self.assertTrue(r['skipped_same_price'])
+                else:
+                    self.assertEqual((r['fill_stage'], r['fill_seconds']), ('signal', 4))
+                self.assertEqual(orders[-1]['time'], 3 if action == 'market' else 10)
+
+    def test_three_action_preserves_old_order_until_arrival(self):
+        for side in (-1, 1):
+            for when in (2, 3, 3.5, 4):
+                for action in ('market', 'lastprice', 'passive'):
+                    d = session(); i = int(when*2)
+                    if side == 1:
+                        d.a[i], d.b[i] = 81, 80
+                    else:
+                        d.b[i], d.a[i] = 119, 120
+                    r = simulate(d, 0, side, POLICIES[2], -side, c_limit_offset_ticks=19, c_signal_action=action)
+                    self.assertEqual((r['fill_seconds'], r['fill_stage'], r['fill_ticks']), (when, 'initial', 100-side*19))
+
+    def test_three_action_default_matches_original_and_validation(self):
+        for side in (-1, 1):
+            for signal in (-1, 0, 1):
+                a = simulate(session(), 0, side, POLICIES[2], signal, c_limit_offset_ticks=19)
+                action = 'market' if side*signal > 0 else 'passive'
+                b = simulate(session(), 0, side, POLICIES[2], signal, c_limit_offset_ticks=19, c_signal_action=action)
+                self.assertEqual(a, b)
+        with self.assertRaises(ValueError):
+            simulate(session(), 0, 1, POLICIES[0], 1, c_signal_action='lastprice')
+        with self.assertRaises(ValueError):
+            simulate(session(), 0, 1, POLICIES[2], 1, c_signal_action='best_future')
+
     def test_c_passive_offset_both_sides_and_stages(self):
         for side in (1, -1):
             d = session(); d.p[6:] = 100+side

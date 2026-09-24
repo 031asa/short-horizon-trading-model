@@ -76,6 +76,7 @@ def guide(commit,files,omitted):
 9. [开盘前1／19／30／60分钟比较](result/opening_execution/opening_ranges/时段比较说明.md)：每个时间段同时展示每分钟与每秒任务，共8行；统一整秒后首条快照起算。原首分钟1062任务的旧时钟口径单独保留。
 10. [四策略完整对比：C固定19档](result/opening_execution/opening_ranges/four_strategy_c19/四策略对比说明.md)：立即市价、A、B、C19在8组共同样本上的执行成本、完成时间、成交方式与成本胜平负；含PNG、SVG、CSV和逐任务结果，不展示各时段最低档。
 11. [四策略40日覆盖版](result/opening_execution/opening_ranges/four_strategy_c19_all40/四策略40日对比说明.md)：全部原始日期统一使用最新W3第四折模型重算；固定C19，包含训练内回算，仅作全样本探索。缺行情的日期和任务单列，图中标注实际有效日期数。
+12. [第3秒三动作阈值实验](result/opening_execution/opening_ranges/three_action_threshold/三动作阈值实验说明.md)：初始19档不变，同单回放市价、LastPrice、被动19档；完整阈值扫描、8组对照、逐日稳定性及3秒未成交子集。首小时最低阈值退回0，等同C19；新增LastPrice中间档未改善成本，固定19档消融另报等待代价。
 
 ## 各目录口径
 

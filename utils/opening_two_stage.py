@@ -28,12 +28,17 @@ RULES = dict(
 )
 
 
-def simulate(d, task: float, direction: int, policy: str, signal: int | None, *, c_limit_offset_ticks: int = 0):
+def simulate(d, task: float, direction: int, policy: str, signal: int | None, *, c_limit_offset_ticks: int = 0,
+             c_signal_action: str | None = None):
     """Simulate one independent order. Only T+3 consumes the supplied signal."""
     if direction not in (-1, 1) or policy not in POLICIES:
         raise ValueError('Invalid side/policy')
     if signal not in (-1, 0, 1, None):
         raise ValueError('Signal must be -1, 0, 1, or None')
+    if c_signal_action not in (None, 'market', 'lastprice', 'passive'):
+        raise ValueError('C signal action must be market, lastprice, passive, or None')
+    if c_signal_action is not None and policy != 'C_limit_first':
+        raise ValueError('Signal action override is only available for C')
     if isinstance(c_limit_offset_ticks, bool) or not isinstance(c_limit_offset_ticks, (int, np.integer)) or c_limit_offset_ticks < 0:
         raise ValueError('C passive offset must be a nonnegative integer number of ticks')
     offset = c_limit_offset_ticks if policy == 'C_limit_first' else 0
@@ -160,13 +165,17 @@ def simulate(d, task: float, direction: int, policy: str, signal: int | None, *,
                 return invalid('missing_signal')
             signal_used = True
             signal_action = 'market' if direction*signal > 0 else 'limit'
+            signal_offset = offset
+            if c_signal_action is not None:
+                signal_action = 'market' if c_signal_action == 'market' else 'limit'
+                signal_offset = 0 if c_signal_action == 'lastprice' else offset
             event('signal', signal=int(signal), action=signal_action,
                   lastprice_ticks=float(d.p[i]), source_seconds=float(d.times[i]))
             if pending is not None:
                 # With the two-snapshot delay and maximum 1-second gaps the
                 # initial limit must have arrived by T+3 on every valid path.
                 return invalid('unexpected_pending_at_signal')
-            signal_limit = float(d.p[i])-direction*offset
+            signal_limit = float(d.p[i])-direction*signal_offset
             if signal_action == 'limit' and active is not None and active['limit'] == signal_limit:
                 skipped_same_price = True
                 event('keep_same_limit', limit_ticks=signal_limit)
