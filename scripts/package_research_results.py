@@ -70,6 +70,7 @@ def guide(commit,files,omitted):
 5. [短观察期因子初筛](result/opening_execution/短观察期因子初筛.md) 与 [全部因子IC看板](result/opening_execution/全部因子IC与衰减.html)。
 6. [每天最开始一笔的执行胜率](result/opening_execution/first_order_ablation/首笔执行结果.md)：按首条实际开盘行情发单，单独报告，不能混入名义09:30:00任务。
 7. [每分钟执行报告](result/opening_execution/every_minute/每分钟执行报告.md) 与 [全天分钟曲线](result/opening_execution/every_minute/每分钟执行表现.png)：冻结开盘模型，检验上午和下午每分钟的迁移效果。
+8. [立即市价对照报告](result/opening_execution/every_minute/market_comparison/市价对照报告.md)：保持相同执行延迟，用任务开始即提交的市价单检验A／B／C是否真正节省成本。
 
 ## 各目录口径
 
