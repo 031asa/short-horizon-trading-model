@@ -71,6 +71,7 @@ def guide(commit,files,omitted):
 6. [每天最开始一笔的执行胜率](result/opening_execution/first_order_ablation/首笔执行结果.md)：按首条实际开盘行情发单，单独报告，不能混入名义09:30:00任务。
 7. [每分钟执行报告](result/opening_execution/every_minute/每分钟执行报告.md) 与 [全天分钟曲线](result/opening_execution/every_minute/每分钟执行表现.png)：冻结开盘模型，检验上午和下午每分钟的迁移效果。
 8. [立即市价对照报告](result/opening_execution/every_minute/market_comparison/市价对照报告.md)：保持相同执行延迟，用任务开始即提交的市价单检验A／B／C是否真正节省成本。
+9. [开盘前1／19／30／60分钟比较](result/opening_execution/opening_ranges/时段比较说明.md)：统一每分钟抽样；另补原首分钟逐秒任务的市价对照，分别展示。
 
 ## 各目录口径
 
