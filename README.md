@@ -1,6 +1,6 @@
 # 开盘首分钟预测与执行研究
 
-当前已完成因子IC、三因子预测与增强、开盘时间曲线及两阶段执行消融。最新执行实验见本文末尾“两阶段执行消融”，输出在 `result/opening_execution/two_stage_ablation/`。不同阶段任务、模型与撮合口径独立保存，不混用。历史决策和附件阅读记录见 `项目口径核对.md`。
+**新窗口先读 [AGENTS.md](AGENTS.md) 和 [项目交接.md](项目交接.md)，无需通读本README或整个文件夹。** 当前已完成因子IC、预测增强、执行档位搜索、买卖概率热图与概率/档位线性关系诊断；最新实验在 `result/opening_execution/opening_ranges/probability_offset_relation/`。本README其余内容保留各阶段技术演进，旧“当前”描述需结合所属阶段理解。
 
 运行 `python -X utf8 scripts/package_research_results.py` 将报告、图片、表格、模型参数和主要逐任务数据汇总为 `result/研究结果汇总.zip`，附阅读指南、文件清单与SHA256核验。压缩包不包含原始行情、暂存缓存、已取消的日期验证，以及约1GB的完整逐日IC；保留完整IC汇总Parquet及短窗口逐日IC。代码通过Git单独管理，结果文件仍按原目录保存。
 

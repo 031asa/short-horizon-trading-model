@@ -46,7 +46,7 @@ def choose_files():
                 omitted.append(dict(path=rel,bytes=p.stat().st_size,reason=reason))
             else:
                 files.append(p)
-    for rel in ['README.md','撮合规则与研究说明.md','项目口径核对.md',
+    for rel in ['AGENTS.md','项目交接.md','README.md','撮合规则与研究说明.md','项目口径核对.md',
                 '研究资料/开盘首分钟_L1特征汇总_双类排版版.pdf',
                 'sample_snapshot_原子执行总表.parquet']:
         path=ROOT/rel
@@ -62,6 +62,10 @@ def guide(commit,files,omitted):
 
 本包汇总当前已交付的研究结果，源代码版本为 `{commit}`。
 解压后保留目录结构。HTML可用浏览器离线打开；CSV为UTF-8编码；Parquet是完整精度的数据文件。
+
+## 新窗口接手入口
+
+先读 [AGENTS.md](AGENTS.md) 和 [项目交接.md](项目交接.md)，再按具体任务定位下方报告。无需通读压缩包或全部历史材料；旧报告的待办不是当前任务。
 
 ## 建议先看
 
