@@ -19,6 +19,26 @@ def session(times=None, price=None, bid=None, ask=None, volume=None):
 
 
 class TwoStageTests(unittest.TestCase):
+    def test_c_passive_offset_both_sides_and_stages(self):
+        for side in (1, -1):
+            d = session(); d.p[6:] = 100+side
+            r = simulate(d, 0, side, POLICIES[2], 0, c_limit_offset_ticks=1)
+            orders = [e for e in r['trace'] if e['event']=='submit' and e['kind']=='limit']
+            self.assertEqual([e['limit_ticks'] for e in orders], [100-side, 100])
+            self.assertEqual(r['fill_stage'], 'deadline')
+
+    def test_c_passive_offset_fills_at_offset_limit(self):
+        for side in (1, -1):
+            d = session()
+            (d.a if side==1 else d.b)[4] = 100-side
+            r = simulate(d, 0, side, POLICIES[2], 0, c_limit_offset_ticks=1)
+            self.assertEqual((r['fill_ticks'], r['cost_ticks']), (100-side, -1))
+
+    def test_c_offset_does_not_change_ab(self):
+        for policy in POLICIES[:2]:
+            self.assertEqual(simulate(session(),0,1,policy,1),
+                             simulate(session(),0,1,policy,1,c_limit_offset_ticks=1))
+
     def test_delay_and_common_deadline(self):
         for policy in POLICIES:
             r = simulate(session(), 0, 1, policy, 0)

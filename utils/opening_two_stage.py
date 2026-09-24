@@ -28,12 +28,15 @@ RULES = dict(
 )
 
 
-def simulate(d, task: float, direction: int, policy: str, signal: int | None):
+def simulate(d, task: float, direction: int, policy: str, signal: int | None, *, c_limit_offset_ticks: int = 0):
     """Simulate one independent order. Only T+3 consumes the supplied signal."""
     if direction not in (-1, 1) or policy not in POLICIES:
         raise ValueError('Invalid side/policy')
     if signal not in (-1, 0, 1, None):
         raise ValueError('Signal must be -1, 0, 1, or None')
+    if isinstance(c_limit_offset_ticks, bool) or not isinstance(c_limit_offset_ticks, (int, np.integer)) or c_limit_offset_ticks < 0:
+        raise ValueError('C passive offset must be a nonnegative integer number of ticks')
+    offset = c_limit_offset_ticks if policy == 'C_limit_first' else 0
     trace = []
     active = None
     pending = None
@@ -146,7 +149,7 @@ def simulate(d, task: float, direction: int, policy: str, signal: int | None):
                     return result
         elif item == 0:
             if policy != 'B_observe_first':
-                submit('limit', p0, 'initial')
+                submit('limit', p0-direction*offset, 'initial')
         elif item == 3:
             if policy == 'A_benchmark':
                 continue
@@ -163,11 +166,12 @@ def simulate(d, task: float, direction: int, policy: str, signal: int | None):
                 # With the two-snapshot delay and maximum 1-second gaps the
                 # initial limit must have arrived by T+3 on every valid path.
                 return invalid('unexpected_pending_at_signal')
-            if signal_action == 'limit' and active is not None and active['limit'] == d.p[i]:
+            signal_limit = float(d.p[i])-direction*offset
+            if signal_action == 'limit' and active is not None and active['limit'] == signal_limit:
                 skipped_same_price = True
-                event('keep_same_limit', limit_ticks=float(d.p[i]))
+                event('keep_same_limit', limit_ticks=signal_limit)
             else:
-                submit(signal_action, float(d.p[i]) if signal_action == 'limit' else None, 'signal')
+                submit(signal_action, signal_limit if signal_action == 'limit' else None, 'signal')
         else:
             if pending is not None:
                 if pending['kind'] == 'market':
