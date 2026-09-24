@@ -1,4 +1,47 @@
-# 开盘首分钟预测与执行研究
+# 短时交易模型：因子、预测与执行研究
+
+利用 IC2609 期货 L1 快照研究短观察窗口中的 LastPrice 涨跌，再检验信号能否改善已有买卖任务的执行成本。研究路径为：59 家族因子与 IC → 三因子及小组合增强 → 两阶段执行 → 固定档位扫描 → 上涨概率与挂档关系。
+
+本仓库为私有研究归档；数据使用已获项目所有者授权。原始数据覆盖 2026-07-20 至 2026-09-11 的 40 个日期，首分钟研究实际使用 38 日；首小时 40 日覆盖版有 39 日有效，且包含训练内回算。所有日期此前已参与探索，结果不代表独立样本外收益。
+
+## 获取代码与完整数据
+
+代码和测试保留完整 Git 历史；大型数据位于本仓库的 [研究快照 Release](https://github.com/031asa/short-horizon-trading-model/releases/tag/research-2026-09-24)。访问代码和附件都需要私有仓库权限。
+
+| 附件 | 内容与还原位置 |
+|---|---|
+| `research-results.zip` | 各阶段报告、PNG/SVG、汇总、模型参数、逐任务结果及当前原子表；恢复包内相对路径 |
+| `20260720_20260911_IC2609.parquet` | 原始 40 日行情 → `新窗口交接_20260921/` |
+| `daily_ic.parquet` | 完整逐日 IC → `result/opening_execution/` |
+| `release-manifest.json` / `SHA256SUMS.txt` | 源代码版本、附件大小、SHA256、还原路径和排除范围 |
+| `research-files.csv` | 结果包内各文件的相对路径、大小和 SHA256 |
+
+在已登录 GitHub CLI 的 Windows PowerShell 中执行：
+
+```powershell
+gh repo clone 031asa/short-horizon-trading-model
+Set-Location short-horizon-trading-model
+gh release download research-2026-09-24 --repo 031asa/short-horizon-trading-model --dir result/github_release/download
+python -X utf8 scripts/restore_release_data.py --assets result/github_release/download
+```
+
+还原工具只依赖 Python 标准库；先核验全部附件和包内文件，再恢复研究目录。包内根目录的五份源码说明由 Git 提供，不用压缩包覆盖；其余同内容文件跳过，遇到不同内容的同名文件停止，不覆盖已有研究。仅检查可加 `--verify-only`；数据也可从 Release 页面手动下载到同一文件夹。代码更新后请使用 Release 对应版本还原。
+
+运行研究需安装 `environment.yml` 的依赖；本项目使用 Windows 原生环境，无需 WSL。测试入口为 `python -X utf8 scripts/test_opening.py result/local_verification`。接手或查看结果无需重新训练或回测。
+
+## 最近研究：上涨概率能否指导第 3 秒挂档
+
+买卖使用相同任务与相同 `p_up`，仅研究两侧在第 3 秒均未成交的订单；初始挂 19 档，第 3 秒强制限价扫描 0–60 档。图中不是完整 C 策略收益，也不是涨跌预测准确率。
+
+18 日和 40 日覆盖版的线性斜率不稳定，区间均跨零；日期前推比较中，线性调档也没有稳定优于固定 19 档。因此目前没有得到可直接用于执行的稳定线性规则。完整说明与表格下载后位于 `result/opening_execution/opening_ranges/probability_offset_relation/`。
+
+![18 日上涨概率与挂档关系](docs/images/probability-offset-18d.png)
+
+![40 日覆盖版上涨概率与挂档关系](docs/images/probability-offset-40d.png)
+
+![原始上涨概率 0.10–0.40 分界扫描](docs/images/probability-threshold-scan.png)
+
+## 接手与历史研究索引
 
 **新窗口先读 [AGENTS.md](AGENTS.md) 和 [项目交接.md](项目交接.md)，无需通读本README或整个文件夹。** 当前已完成因子IC、预测增强、执行档位搜索、买卖概率热图与概率/档位线性关系诊断；最新实验在 `result/opening_execution/opening_ranges/probability_offset_relation/`。本README其余内容保留各阶段技术演进，旧“当前”描述需结合所属阶段理解。
 

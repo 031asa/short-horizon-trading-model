@@ -16,3 +16,6 @@ output/
 
 # Canonical offline dashboard source (generated HTML remains ignored).
 !utils/ic_dashboard.html
+
+# Small reviewed previews for the private GitHub project landing page.
+!docs/images/*.png
