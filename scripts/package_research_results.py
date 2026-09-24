@@ -79,6 +79,8 @@ def guide(commit,files,omitted):
 12. [第3秒三动作阈值实验](result/opening_execution/opening_ranges/three_action_threshold/三动作阈值实验说明.md)：初始19档不变，同单回放市价、LastPrice、被动19档；完整阈值扫描、8组对照、逐日稳定性及3秒未成交子集。首小时最低阈值退回0，等同C19；新增LastPrice中间档未改善成本，固定19档消融另报等待代价。
 13. **按用户原意：仅初始19档，第3秒恢复LastPrice**：[18日四策略](result/opening_execution/opening_ranges/initial_only_c19/18d/四策略对比说明.md) 与 [40日四策略](result/opening_execution/opening_ranges/initial_only_c19/40d/四策略对比说明.md)。与上面的双阶段19档是不同策略；旧结果完整保留。两版独立重放M/A/B/C并按原共同任务与立即市价比较。第12项中的LastPrice控制才对应这里的40日C；该项阈值0对应双阶段19档，不能混淆基准。
 
+14. [新C基准的三动作阈值实验](result/opening_execution/opening_ranges/rebased_three_action_threshold/结果说明.md)：18日和40日信号强弱分箱、三动作成本曲线及完整阈值扫描。无阈值基准是第3秒LastPrice，阈值0是旧双阶段19档；分别提供相对第3秒市价与相对新C的曲线，不能混用零线。
+
 ## 各目录口径
 
 |目录|内容|使用边界|
