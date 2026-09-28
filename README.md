@@ -43,7 +43,9 @@ python -X utf8 scripts/restore_release_data.py --assets result/github_release/do
 
 ## 接手与历史研究索引
 
-**新窗口先读 [AGENTS.md](AGENTS.md) 和 [项目交接.md](项目交接.md)，无需通读本README或整个文件夹。** 当前已完成因子IC、预测增强、执行档位搜索、买卖概率热图与概率/档位线性关系诊断；最新实验在 `result/opening_execution/opening_ranges/probability_offset_relation/`。本README其余内容保留各阶段技术演进，旧“当前”描述需结合所属阶段理解。
+2026-09-28新增：固定五因子、预测观察结束后未来1秒的观察期选择。结果在 `result/opening_prediction/observation_1s/观察期选择报告.md`，独立交付包为 `result/观察期选择_未来1秒.zip`。38日开盘首分钟任务，实际起点统一为整秒后首条快照；18日1035个共同检验任务上，1／2／3／4／5秒准确率为61.34%／62.59%／63.96%／62.58%／62.60%。历史峰值3秒，最近验证按预定规则选择2秒；两快照延迟约1秒，不能把预测表现直接视为执行收益。旧模型/撮合不变，未更新9月24日GitHub数据快照。
+
+**新窗口先读 [AGENTS.md](AGENTS.md) 和 [项目交接.md](项目交接.md)，无需通读本README或整个文件夹。** 当前已完成因子IC、预测增强、执行档位搜索、概率/档位诊断及最新观察期选择；最新实验在 `result/opening_prediction/observation_1s/`。本README其余内容保留各阶段技术演进，旧“当前”描述需结合所属阶段理解。
 
 运行 `python -X utf8 scripts/package_research_results.py` 将报告、图片、表格、模型参数和主要逐任务数据汇总为 `result/研究结果汇总.zip`，附阅读指南、文件清单与SHA256核验。压缩包不包含原始行情、暂存缓存、已取消的日期验证，以及约1GB的完整逐日IC；保留完整IC汇总Parquet及短窗口逐日IC。代码通过Git单独管理，结果文件仍按原目录保存。
 
