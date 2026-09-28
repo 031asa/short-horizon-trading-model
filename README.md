@@ -45,7 +45,9 @@ python -X utf8 scripts/restore_release_data.py --assets result/github_release/do
 
 2026-09-28新增：固定五因子、预测观察结束后未来1秒的观察期选择。结果在 `result/opening_prediction/observation_1s/观察期选择报告.md`，独立交付包为 `result/观察期选择_未来1秒.zip`。38日开盘首分钟任务，实际起点统一为整秒后首条快照；18日1035个共同检验任务上，1／2／3／4／5秒准确率为61.34%／62.59%／63.96%／62.58%／62.60%。历史峰值3秒，最近验证按预定规则选择2秒；两快照延迟约1秒，不能把预测表现直接视为执行收益。旧模型/撮合不变，未更新9月24日GitHub数据快照。
 
-**新窗口先读 [AGENTS.md](AGENTS.md) 和 [项目交接.md](项目交接.md)，无需通读本README或整个文件夹。** 当前已完成因子IC、预测增强、执行档位搜索、概率/档位诊断及最新观察期选择；最新实验在 `result/opening_prediction/observation_1s/`。本README其余内容保留各阶段技术演进，旧“当前”描述需结合所属阶段理解。
+随后用户固定观察3秒，完成旧C预测期限比较：初始/后续限价均19档、10秒兜底、18日首小时逐秒62,899共同任务。原旧C成本0.663516bp，五因子1秒候选0.634884bp，同五因子3秒对照0.649513bp，市价0.691966bp。1秒候选相对原旧C节约0.028632bp，95%日期块区间[0.016813,0.043395]，通过切换门槛；开盘首分钟未改善、三组C首分钟均未击败市价。未执行初始挂档扫描。报告在 `result/opening_execution/initial_offset_selection/horizon_comparison/预测期限比较报告.md`，独立包为 `result/旧C预测期限比较_观察3秒.zip`；运行入口为 `python -X utf8 -m scripts.run_horizon_execution` 与 `python -X utf8 -m scripts.deliver_horizon_execution`。原模型、撮合及旧实验保留，尚未更新GitHub快照。
+
+**新窗口先读 [AGENTS.md](AGENTS.md) 和 [项目交接.md](项目交接.md)，无需通读本README或整个文件夹。** 最新实验为观察3秒的旧C预测期限执行比较，结果目录如上。本README其余内容保留各阶段技术演进，旧“当前”描述需结合所属阶段理解。
 
 运行 `python -X utf8 scripts/package_research_results.py` 将报告、图片、表格、模型参数和主要逐任务数据汇总为 `result/研究结果汇总.zip`，附阅读指南、文件清单与SHA256核验。压缩包不包含原始行情、暂存缓存、已取消的日期验证，以及约1GB的完整逐日IC；保留完整IC汇总Parquet及短窗口逐日IC。代码通过Git单独管理，结果文件仍按原目录保存。
 
