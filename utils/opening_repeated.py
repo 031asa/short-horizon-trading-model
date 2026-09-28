@@ -10,12 +10,15 @@ STRATEGIES = {'C3': (3,), 'C36': (3, 6), 'C369': (3, 6, 9)}
 NAMES = {'M': '立即市价', 'C3': '只在3秒判断', 'C36': '3、6秒判断', 'C369': '3、6、9秒判断'}
 
 
-def simulate_repeated(d, task, direction, signals, decisions=(3, 6, 9), offset=19):
+def simulate_repeated(d, task, direction, signals, decisions=(3, 6, 9), offset=19, *, early_market_seconds=()):
     if direction not in (-1, 1) or tuple(decisions) not in STRATEGIES.values():
         raise ValueError('Invalid side or decision schedule')
     if isinstance(offset, bool) or not isinstance(offset, (int, np.integer)) or offset < 0:
         raise ValueError('Invalid passive offset')
-    if any(signals.get(s) not in (-1, 0, 1, None) for s in decisions):
+    early=tuple(early_market_seconds)
+    if early not in ((),(1,),(2,)) or (early and tuple(decisions)!=(3,)):
+        raise ValueError('Early check must be 1s or 2s followed by the original 3s decision')
+    if any(signals.get(s) not in (-1, 0, 1, None) for s in (*early,*decisions)):
         raise ValueError('Invalid signal')
     trace = []; active = None; pending = []; now = float(task); p0 = np.nan
     used = []; missing = []; submissions = 0; replacements = 0
@@ -71,7 +74,7 @@ def simulate_repeated(d, task, direction, signals, decisions=(3, 6, 9), offset=1
     first = int(np.searchsorted(d.times, task, 'right'))
     last = min(d.n, int(np.searchsorted(d.times, task+10, 'right'))+d.config.execution_delay_snapshots)
     events = [(float(d.times[i]), 0, i) for i in range(first, last)]
-    events += [(float(task+s), 1, s) for s in (0, *decisions, 10)]
+    events += [(float(task+s), 1, s) for s in (0, *early, *decisions, 10)]
     events.sort()
     for now, category, item in events:
         if category == 0:
@@ -98,7 +101,28 @@ def simulate_repeated(d, task, direction, signals, decisions=(3, 6, 9), offset=1
                 if result: return result
         elif item == 0:
             submit('limit', p0-direction*offset, 'initial')
+        elif item in early:
+            _, error = source(now)
+            if error:
+                missing.append(item)
+                event('missing_signal_keep', decision_second=item, reason='early_source_'+error)
+                continue
+            signal = signals.get(item)
+            if signal is None:
+                missing.append(item)
+                event('missing_signal_keep', decision_second=item)
+            else:
+                used.append(item)
+                adverse=direction*signal>0
+                event('early_signal', decision_second=item, signal=int(signal), action='market' if adverse else 'keep')
+                if adverse:
+                    # The initial limit may still be in flight. Commands retain
+                    # submission order; an earlier limit fill cancels this market.
+                    submit('market', None, f'signal{item}')
         elif item in decisions:
+            if early and any(c['kind']=='market' for c in pending):
+                event('signal_already_market', decision_second=item)
+                continue
             if pending: return invalid('unexpected_pending_at_signal')
             i, error = source(now)
             if error: return invalid('signal_'+error)
