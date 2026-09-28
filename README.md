@@ -57,7 +57,9 @@ python -X utf8 scripts/restore_release_data.py --assets result/github_release/do
 
 随后按用户指定组合“首分钟任务立即市价、其余59分钟保持W3/H1双19档C3”。复用18日62,899逐秒任务路径，首小时成本0.629403bp，相对全程C3改善0.005481bp（95%日期块区间[0.000826,0.010304]），相对全程市价节约0.062564bp。按每日日内任务均值再日期等权，首分钟1,080任务的改善摊入全小时；不直接混合跨日时段均值。完整对照、逐日和125,798笔配对数据在`result/opening_execution/initial_offset_selection/first_minute_market/`，未改模型或撮合，未自动启用该历史探索规则。
 
-**新窗口先读 [AGENTS.md](AGENTS.md) 和 [项目交接.md](项目交接.md)，无需通读本README或整个文件夹。** 最近完成提前检查试验及首分钟市价/其余C3组合查询，结果目录如上。本README其余内容保留各阶段技术演进，旧“当前”描述需结合所属阶段理解。
+首分钟执行劣势追加诊断在`result/opening_execution/initial_offset_selection/first_minute_diagnosis/`：50.88%订单比市价便宜、46.57%更贵，但平均节约3.873444bp小于更贵组损失4.922294bp。第3秒转市价且预测正确的589笔中82.34%仍比起点市价贵，反映信号时点和执行目标差异；不得据此反向信号。逐一删日后仍比市价贵0.208481–0.365551bp。报告、条件组CSV及校验记录保留，未改模型或策略。
+
+**新窗口先读 [AGENTS.md](AGENTS.md) 和 [项目交接.md](项目交接.md)，无需通读本README或整个文件夹。** 最近完成提前检查试验、首分钟市价组合查询及执行劣势追加诊断，结果目录如上。本README其余内容保留各阶段技术演进，旧“当前”描述需结合所属阶段理解。
 
 运行 `python -X utf8 scripts/package_research_results.py` 将报告、图片、表格、模型参数和主要逐任务数据汇总为 `result/研究结果汇总.zip`，附阅读指南、文件清单与SHA256核验。压缩包不包含原始行情、暂存缓存、已取消的日期验证，以及约1GB的完整逐日IC；保留完整IC汇总Parquet及短窗口逐日IC。代码通过Git单独管理，结果文件仍按原目录保存。
 
