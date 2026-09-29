@@ -48,7 +48,7 @@ def choose_files():
                 files.append(p)
     for rel in ['AGENTS.md','项目交接.md','README.md','撮合规则与研究说明.md','项目口径核对.md',
                 '研究资料/开盘首分钟_L1特征汇总_双类排版版.pdf',
-                'sample_snapshot_原子执行总表.parquet']:
+                'sample_snapshot_原子执行总表.parquet','docs/research-2026-09-28.md']:
         path=ROOT/rel
         if path.is_file():
             files.append(path)
@@ -67,9 +67,15 @@ def guide(commit,files,omitted):
 
 先读 [AGENTS.md](AGENTS.md) 和 [项目交接.md](项目交接.md)，再按具体任务定位下方报告。无需通读压缩包或全部历史材料；旧报告的待办不是当前任务。
 
-## 建议先看
+## 9月28日最新研究
 
-1. [最新两阶段执行消融报告](result/opening_execution/two_stage_ablation/两阶段执行消融报告.md)：A基准、B先观察、C先挂单；仅第3秒判断、统一第10秒兜底。
+先读[9月28日研究总结](docs/research-2026-09-28.md)。观察期比较位于`result/opening_prediction/observation_1s/`；预测期限、初始档位、重复判断、成交时间、提前检查、分段市价与首分钟原因诊断均位于`result/opening_execution/initial_offset_selection/`的对应子目录。
+
+当前C3观察3秒、预测1秒、初始/后续均19档、10秒兜底。18日首小时62,899共同任务成本0.634884bp，市价0.691966bp；首分钟市价、随后59分钟C3组合成本0.629403bp。首分钟单独看C3比市价贵0.321719bp。最新168项测试通过。结果属于已有日期历史探索，未自动部署。
+
+## 历史阶段阅读索引
+
+1. [最初两阶段执行消融报告](result/opening_execution/two_stage_ablation/两阶段执行消融报告.md)：A基准、B先观察、C先挂单；仅第3秒判断、统一第10秒兜底。
 2. [执行成本图片](result/opening_execution/two_stage_ablation/两阶段执行成本对比.png) 与 [策略总表](result/opening_execution/two_stage_ablation/策略总表.csv)。
 3. [固定三因子增强报告](result/opening_prediction/three_factor_enhancement/固定三因子增强报告.md)：固定三因子、额外信息及1–10秒观察窗口。
 4. [开盘时间曲线](result/opening_prediction/three_factor_enhancement/time_of_minute/开盘首分钟_准确率时间曲线.png)。
@@ -98,11 +104,11 @@ def guide(commit,files,omitted):
 |collinearity / significance|六因子及三因子共线性、显著性诊断|条件诊断，不等同于独立样本筛选|
 |no_cold_start|无冷启动小组合、完整期限评价|允许组合变化的旧实验|
 |three_factor_enhancement|固定三因子增强、全部期限、逐任务数据、模型参数及选择记录|观察＝回看1–10秒，三因子始终保留；时间曲线在time_of_minute|
-|opening_execution/two_stage_ablation|最新两阶段执行、成本、归因、逐任务事件与验收|使用四折固定3秒增强模型；18个检验日；每个任务独立模拟买卖各1手|
+|opening_execution/two_stage_ablation|最初两阶段执行、成本、归因、逐任务事件与验收|使用四折固定3秒增强模型；18个检验日；每个任务独立模拟买卖各1手|
 |opening_execution/first_order_ablation|只看每天最开始发单任务的执行胜率|首条开盘快照为实际起点，约09:30:00.1～00.5；所有阶段从此起点计算|
 |opening_execution/every_minute|240个分钟时点、半小时、上午／下午及逐任务执行结果|整点后首条快照起算；冻结开盘模型直接迁移，缺行情和缺信号共同排除|
 
-## 最新结果的含义
+## 最初两阶段实验的历史结果
 
 两阶段实验中，买卖各半的平均执行成本为A 1.771bp、B 1.431bp、C 1.853bp；B较A节约0.340bp，C较A节约−0.082bp。
 C平均完成更快，但本轮没有显示稳定成本改善。成本以同一任务起点LastPrice衡量。
